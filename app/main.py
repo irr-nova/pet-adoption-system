@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from sqlalchemy import create_engine, Column, Integer, String, Boolean, select
 from sqlalchemy.orm import sessionmaker, declarative_base
@@ -29,6 +30,14 @@ class PetModel(Base):
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Pet Adoption System")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 class PetCreate(BaseModel):
     name: str = Field(..., description="Name of the pet")
@@ -70,6 +79,67 @@ def get_pets():
         pets = db.execute(stmt).scalars().all()
         return list(pets)
     except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Database error")
+    finally:
+        db.close()
+
+@app.get("/pets/{pet_id}", response_model=Pet)
+def get_pet(pet_id: int):
+    db = SessionLocal()
+    try:
+        pet = db.get(PetModel, pet_id)
+
+        if pet is None:
+            raise HTTPException(status_code=404, detail="Pet not found")
+
+        return pet
+
+    except SQLAlchemyError:
+        raise HTTPException(status_code=500, detail="Database error")
+    finally:
+        db.close()
+
+@app.put("/pets/{pet_id}", response_model=Pet)
+def update_pet(pet_id: int, pet: PetCreate):
+    db = SessionLocal()
+    try:
+        db_pet = db.get(PetModel, pet_id)
+
+        if db_pet is None:
+            raise HTTPException(status_code=404, detail="Pet not found")
+
+        db_pet.name = pet.name
+        db_pet.animal_type = pet.animal_type
+        db_pet.age = pet.age
+        db_pet.available_for_adoption = pet.available_for_adoption
+
+        db.commit()
+        db.refresh(db_pet)
+
+        return db_pet
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Database error")
+    finally:
+        db.close()
+
+@app.delete("/pets/{pet_id}")
+def delete_pet(pet_id: int):
+    db = SessionLocal()
+    try:
+        db_pet = db.get(PetModel, pet_id)
+
+        if db_pet is None:
+            raise HTTPException(status_code=404, detail="Pet not found")
+
+        db.delete(db_pet)
+        db.commit()
+
+        return {"message": "Pet deleted successfully"}
+
+    except SQLAlchemyError:
+        db.rollback()
         raise HTTPException(status_code=500, detail="Database error")
     finally:
         db.close()
