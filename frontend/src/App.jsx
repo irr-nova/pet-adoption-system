@@ -3,6 +3,15 @@ import "./App.css";
 
 function App() {
   const [search, setSearch] = useState("");
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem("token"));
+  const [authMode, setAuthMode] = useState("login");
+  const [authForm, setAuthForm] = useState({
+    name: "",
+    email: "",
+    password: "",
+    phone: "",
+  });
   const [filter, setFilter] = useState("All");
   const [selectedPet, setSelectedPet] = useState(null);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -50,6 +59,99 @@ function App() {
     return "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=800";
   };
 
+  const handleAuth = async (e) => {
+    e.preventDefault();
+
+    try {
+      if (authMode === "register") {
+        const registerResponse = await fetch(
+          "https://pet-adoption-system-p7pu.onrender.com/register",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              name: authForm.name,
+              email: authForm.email,
+              password: authForm.password,
+              phone: authForm.phone,
+            }),
+          },
+        );
+
+        if (!registerResponse.ok) {
+          const data = await registerResponse.json();
+          throw new Error(data.detail || "Registration failed");
+        }
+
+        alert("Registration successful! Please log in. 🐾");
+
+        setAuthMode("login");
+        setAuthForm({
+          name: "",
+          email: authForm.email,
+          password: "",
+          phone: "",
+        });
+
+        return;
+      }
+
+      const loginResponse = await fetch(
+        "https://pet-adoption-system-p7pu.onrender.com/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: authForm.email,
+            password: authForm.password,
+          }),
+        },
+      );
+
+      if (!loginResponse.ok) {
+        const data = await loginResponse.json();
+        throw new Error(data.detail || "Login failed");
+      }
+
+      const loginData = await loginResponse.json();
+
+      localStorage.setItem("token", loginData.access_token);
+      setToken(loginData.access_token);
+
+      const meResponse = await fetch(
+        "https://pet-adoption-system-p7pu.onrender.com/me",
+        {
+          headers: {
+            Authorization: `Bearer ${loginData.access_token}`,
+          },
+        },
+      );
+
+      if (!meResponse.ok) {
+        throw new Error("Unable to get user details");
+      }
+
+      const userData = await meResponse.json();
+      setUser(userData);
+
+      setAuthForm({
+        name: "",
+        email: "",
+        password: "",
+        phone: "",
+      });
+
+      alert(`Welcome to PawConnect, ${userData.name}! 🐾`);
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Something went wrong");
+    }
+  };
+
   const filteredPets = pets.filter((pet) => {
     const matchesSearch = pet.name.toLowerCase().includes(search.toLowerCase());
 
@@ -62,16 +164,19 @@ function App() {
     e.preventDefault();
 
     try {
-      const response = await fetch("https://pet-adoption-system-p7pu.onrender.com/pets", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        "https://pet-adoption-system-p7pu.onrender.com/pets",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...newPet,
+            age: Number(newPet.age),
+          }),
         },
-        body: JSON.stringify({
-          ...newPet,
-          age: Number(newPet.age),
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Failed to add pet");
@@ -99,18 +204,21 @@ function App() {
 
   const handleUpdatePet = async () => {
     try {
-      const response = await fetch(`https://pet-adoption-system-p7pu.onrender.com/pets/${editPet.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        `https://pet-adoption-system-p7pu.onrender.com/pets/${editPet.id}`,
+        {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name: editPet.name,
+            animal_type: editPet.animal_type,
+            age: Number(editPet.age),
+            available_for_adoption: editPet.available_for_adoption,
+          }),
         },
-        body: JSON.stringify({
-          name: editPet.name,
-          animal_type: editPet.animal_type,
-          age: Number(editPet.age),
-          available_for_adoption: editPet.available_for_adoption,
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Failed to update pet");
@@ -139,9 +247,12 @@ function App() {
     }
 
     try {
-      const response = await fetch(`https://pet-adoption-system-p7pu.onrender.com/pets/${petId}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `https://pet-adoption-system-p7pu.onrender.com/pets/${petId}`,
+        {
+          method: "DELETE",
+        },
+      );
 
       if (!response.ok) {
         throw new Error("Failed to delete pet");
@@ -176,7 +287,32 @@ function App() {
           <a href="#about">About</a>
         </div>
 
-        <button className="nav-button">Get Started</button>
+        {user ? (
+          <div className="user-menu">
+            <span>Hi, {user.name} 👋</span>
+            <button
+              className="nav-button"
+              onClick={() => {
+                localStorage.removeItem("token");
+                setToken(null);
+                setUser(null);
+              }}
+            >
+              Logout
+            </button>
+          </div>
+        ) : (
+          <button
+            className="nav-button"
+            onClick={() => {
+              document
+                .getElementById("auth")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            Get Started
+          </button>
+        )}
       </nav>
 
       {/* Hero */}
@@ -210,6 +346,127 @@ function App() {
           <div className="hero-circle"></div>
           <div className="hero-paw">🐾</div>
         </div>
+      </section>
+
+      {/* Authentication */}
+      <section className="auth-section" id="auth">
+        {user ? (
+          <>
+            <p className="eyebrow">WELCOME BACK</p>
+            <h2>Hi, {user.name}! 🐾</h2>
+            <p>You are logged in and can now add pets and adopt pets.</p>
+          </>
+        ) : (
+          <>
+            <p className="eyebrow">
+              {authMode === "login" ? "WELCOME BACK" : "JOIN PAWCONNECT"}
+            </p>
+
+            <h2>
+              {authMode === "login"
+                ? "Log in to PawConnect"
+                : "Create your account"}
+            </h2>
+
+            <p>
+              {authMode === "login"
+                ? "Log in to add and adopt pets."
+                : "Create one account to add pets and adopt pets."}
+            </p>
+
+            <form className="auth-form" onSubmit={handleAuth}>
+              {authMode === "register" && (
+                <>
+                  <label>
+                    Full Name
+                    <input
+                      type="text"
+                      value={authForm.name}
+                      onChange={(e) =>
+                        setAuthForm({
+                          ...authForm,
+                          name: e.target.value,
+                        })
+                      }
+                      placeholder="Enter your name"
+                      required
+                    />
+                  </label>
+
+                  <label>
+                    Phone
+                    <input
+                      type="tel"
+                      value={authForm.phone}
+                      onChange={(e) =>
+                        setAuthForm({
+                          ...authForm,
+                          phone: e.target.value,
+                        })
+                      }
+                      placeholder="Enter your phone number"
+                    />
+                  </label>
+                </>
+              )}
+
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={authForm.email}
+                  onChange={(e) =>
+                    setAuthForm({
+                      ...authForm,
+                      email: e.target.value,
+                    })
+                  }
+                  placeholder="Enter your email"
+                  required
+                />
+              </label>
+
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={authForm.password}
+                  onChange={(e) =>
+                    setAuthForm({
+                      ...authForm,
+                      password: e.target.value,
+                    })
+                  }
+                  placeholder="Enter your password"
+                  minLength="6"
+                  required
+                />
+              </label>
+
+              <button type="submit" className="cta-button">
+                {authMode === "login" ? "Login" : "Register"}
+              </button>
+            </form>
+
+            <button
+              type="button"
+              className="auth-switch"
+              onClick={() => {
+                setAuthMode(authMode === "login" ? "register" : "login");
+                setAuthForm({
+                  name: "",
+                  email: authForm.email,
+                  password: "",
+                  phone: "",
+                });
+              }}
+            >
+              {authMode === "login"
+                ? "Don't have an account? Register"
+                : "Already have an account? Login"}
+            </button>
+          </>
+        )}
       </section>
 
       {/* Pets */}
