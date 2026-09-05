@@ -67,6 +67,13 @@ class PetModel(Base):
     available_for_adoption = Column(Boolean, default=True)
     owner_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
 
+class FavoriteModel(Base):
+    __tablename__ = "favorites"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    pet_id = Column(Integer, ForeignKey("pets.id", ondelete="CASCADE"), nullable=False)
+
 
 # -------------------------
 # FastAPI setup
@@ -493,6 +500,135 @@ def adopt_pet(
         db.refresh(pet)
 
         return pet
+
+    except HTTPException:
+        raise
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error",
+        )
+
+    finally:
+        db.close()
+
+# -------------------------
+# FAVORITES
+# -------------------------
+
+# Get current user's favorite pets
+@app.get("/favorites")
+def get_favorites(
+    user_id: int = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        favorites = db.execute(
+            select(FavoriteModel).where(FavoriteModel.user_id == user_id)
+        ).scalars().all()
+
+        return [
+            {
+                "id": favorite.id,
+                "pet_id": favorite.pet_id,
+            }
+            for favorite in favorites
+        ]
+
+    finally:
+        db.close()
+
+
+# Add a pet to favorites
+@app.post("/favorites/{pet_id}")
+def add_favorite(
+    pet_id: int,
+    user_id: int = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        pet = db.get(PetModel, pet_id)
+
+        if pet is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Pet not found",
+            )
+
+        existing_favorite = db.execute(
+            select(FavoriteModel).where(
+                FavoriteModel.user_id == user_id,
+                FavoriteModel.pet_id == pet_id,
+            )
+        ).scalar_one_or_none()
+
+        if existing_favorite:
+            return {
+                "message": "Pet is already in favorites",
+                "favorite": True,
+            }
+
+        favorite = FavoriteModel(
+            user_id=user_id,
+            pet_id=pet_id,
+        )
+
+        db.add(favorite)
+        db.commit()
+        db.refresh(favorite)
+
+        return {
+            "message": "Pet added to favorites",
+            "favorite": True,
+        }
+
+    except HTTPException:
+        raise
+
+    except SQLAlchemyError:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Database error",
+        )
+
+    finally:
+        db.close()
+
+
+# Remove a pet from favorites
+@app.delete("/favorites/{pet_id}")
+def remove_favorite(
+    pet_id: int,
+    user_id: int = Depends(get_current_user),
+):
+    db = SessionLocal()
+
+    try:
+        favorite = db.execute(
+            select(FavoriteModel).where(
+                FavoriteModel.user_id == user_id,
+                FavoriteModel.pet_id == pet_id,
+            )
+        ).scalar_one_or_none()
+
+        if favorite is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Pet is not in favorites",
+            )
+
+        db.delete(favorite)
+        db.commit()
+
+        return {
+            "message": "Pet removed from favorites",
+            "favorite": False,
+        }
 
     except HTTPException:
         raise

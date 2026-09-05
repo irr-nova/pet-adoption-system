@@ -25,6 +25,7 @@ function App() {
   });
 
   const [pets, setPets] = useState([]);
+  const [favorites, setFavorites] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -46,6 +47,75 @@ function App() {
         setLoading(false);
       });
   }, []);
+
+  useEffect(() => {
+    const restoreUser = async () => {
+      const savedToken = localStorage.getItem("token");
+
+      if (!savedToken) {
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          "https://pet-adoption-system-p7pu.onrender.com/me",
+          {
+            headers: {
+              Authorization: `Bearer ${savedToken}`,
+            },
+          },
+        );
+
+        if (!response.ok) {
+          localStorage.removeItem("token");
+          setToken(null);
+          return;
+        }
+
+        const userData = await response.json();
+
+        setToken(savedToken);
+        setUser(userData);
+      } catch (error) {
+        console.error("Failed to restore user:", error);
+        localStorage.removeItem("token");
+        setToken(null);
+      }
+    };
+
+    restoreUser();
+  }, []);
+
+  useEffect(() => {
+    const loadFavorites = async () => {
+      if (!token) {
+        setFavorites([]);
+        return;
+      }
+
+      try {
+        const response = await fetch("http://127.0.0.1:8000/favorites", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          setFavorites([]);
+          return;
+        }
+
+        const data = await response.json();
+
+        setFavorites(data.map((favorite) => favorite.pet_id));
+      } catch (error) {
+        console.error("Failed to load favorites:", error);
+        setFavorites([]);
+      }
+    };
+
+    loadFavorites();
+  }, [token]);
 
   const getPetImage = (pet) => {
     if (pet.animal_type === "Dog") {
@@ -170,6 +240,7 @@ function App() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             ...newPet,
@@ -210,6 +281,7 @@ function App() {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             name: editPet.name,
@@ -251,6 +323,9 @@ function App() {
         `https://pet-adoption-system-p7pu.onrender.com/pets/${petId}`,
         {
           method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
       );
 
@@ -268,6 +343,99 @@ function App() {
     } catch (error) {
       console.error(error);
       alert("Unable to delete pet");
+    }
+  };
+
+  const handleAdoptPet = async (petId) => {
+    if (!user) {
+      alert("Please log in to adopt a pet.");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `https://pet-adoption-system-p7pu.onrender.com/pets/${petId}/adopt`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to adopt pet");
+      }
+
+      const adoptedPet = await response.json();
+
+      setPets(pets.map((pet) => (pet.id === adoptedPet.id ? adoptedPet : pet)));
+
+      if (selectedPet?.id === adoptedPet.id) {
+        setSelectedPet(adoptedPet);
+      }
+
+      alert("Pet adopted successfully! 🐾❤️");
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Unable to adopt pet");
+    }
+  };
+
+  const handleFavorite = async (petId) => {
+    if (!user) {
+      alert("Please log in to add favorites.");
+      return;
+    }
+
+    const isFavorite = favorites.includes(petId);
+
+    try {
+      const response = await fetch(`http://127.0.0.1:8000/favorites/${petId}`, {
+        method: isFavorite ? "DELETE" : "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to update favorite");
+      }
+
+      if (isFavorite) {
+        setFavorites(favorites.filter((id) => id !== petId));
+      } else {
+        setFavorites([...favorites, petId]);
+      }
+    } catch (error) {
+      console.error(error);
+      alert(error.message || "Unable to update favorite");
+    }
+  };
+
+  const handleSharePet = async (pet) => {
+    const shareUrl = `${window.location.origin}/?pet=${pet.id}`;
+
+    const shareData = {
+      title: `Meet ${pet.name} 🐾`,
+      text: `${pet.name} is a ${pet.age}-year-old ${pet.animal_type} looking for a loving home!`,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else {
+        await navigator.clipboard.writeText(shareUrl);
+        alert("Pet link copied to clipboard! 🔗");
+      }
+    } catch (error) {
+      if (error.name !== "AbortError") {
+        console.error("Failed to share pet:", error);
+        alert("Unable to share this pet.");
+      }
     }
   };
 
@@ -296,6 +464,7 @@ function App() {
                 localStorage.removeItem("token");
                 setToken(null);
                 setUser(null);
+                setFavorites([]);
               }}
             >
               Logout
@@ -510,6 +679,20 @@ function App() {
                   </p>
                 </div>
 
+                {user && pet.owner_id !== user.id && (
+                  <button
+                    className="favorite-button"
+                    onClick={() => handleFavorite(pet.id)}
+                    title={
+                      favorites.includes(pet.id)
+                        ? "Remove from favorites"
+                        : "Add to favorites"
+                    }
+                  >
+                    {favorites.includes(pet.id) ? "❤️" : "♡"}
+                  </button>
+                )}
+
                 <button
                   className="view-button"
                   onClick={() => setSelectedPet(pet)}
@@ -518,18 +701,40 @@ function App() {
                 </button>
 
                 <button
-                  className="edit-button"
-                  onClick={() => setEditPet({ ...pet })}
+                  className="share-button"
+                  onClick={() => handleSharePet(pet)}
                 >
-                  Edit
+                  Share ↗
                 </button>
 
-                <button
-                  className="delete-button"
-                  onClick={() => handleDeletePet(pet.id)}
-                >
-                  Delete
-                </button>
+                {user &&
+                  pet.available_for_adoption &&
+                  pet.owner_id !== user.id && (
+                    <button
+                      className="adopt-button"
+                      onClick={() => handleAdoptPet(pet.id)}
+                    >
+                      Adopt ❤️
+                    </button>
+                  )}
+
+                {user && pet.owner_id === user.id && (
+                  <>
+                    <button
+                      className="edit-button"
+                      onClick={() => setEditPet({ ...pet })}
+                    >
+                      Edit
+                    </button>
+
+                    <button
+                      className="delete-button"
+                      onClick={() => handleDeletePet(pet.id)}
+                    >
+                      Delete
+                    </button>
+                  </>
+                )}
               </div>
             </article>
           ))}
@@ -742,7 +947,14 @@ function App() {
 
         <button
           className="cta-button"
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => {
+            if (!user) {
+              alert("Please log in to add a pet.");
+              return;
+            }
+
+            setShowAddForm(!showAddForm);
+          }}
         >
           {showAddForm ? "× Close Form" : "+ Add a Pet"}
         </button>
