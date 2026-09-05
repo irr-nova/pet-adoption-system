@@ -20,7 +20,7 @@ function App() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/pets")
+    fetch("https://pet-adoption-system-p7pu.onrender.com/pets")
       .then((response) => {
         if (!response.ok) {
           throw new Error("Failed to fetch pets");
@@ -62,7 +62,7 @@ function App() {
     e.preventDefault();
 
     try {
-      const response = await fetch("http://127.0.0.1:8000/pets", {
+      const response = await fetch("https://pet-adoption-system-p7pu.onrender.com/pets", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -99,7 +99,7 @@ function App() {
 
   const handleUpdatePet = async () => {
     try {
-      const response = await fetch(`http://127.0.0.1:8000/pets/${editPet.id}`, {
+      const response = await fetch(`https://pet-adoption-system-p7pu.onrender.com/pets/${editPet.id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
