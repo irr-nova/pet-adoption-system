@@ -435,6 +435,64 @@ button {
   transform: translateX(3px);
 }
 
+.favorite-button,
+.share-button,
+.adopt-button,
+.edit-button,
+.delete-button {
+  border: none;
+  border-radius: 8px;
+
+  padding: 8px 10px;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.favorite-button {
+  background: transparent;
+  font-size: 20px;
+  padding: 4px 8px;
+}
+
+.share-button {
+  background: #f3f2ed;
+  color: #55554f;
+}
+
+.adopt-button {
+  background: #263c2e;
+  color: white;
+}
+
+.edit-button {
+  background: #e5eee3;
+  color: #38523d;
+}
+
+.delete-button {
+  background: #f7e4e1;
+  color: #9b3d35;
+}
+
+.pet-card-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.pet-card-actions .view-button,
+.pet-card-actions .adopt-button {
+  flex: 1;
+}
+
+.details-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 24px;
+}
+
 /* ================================
    Empty state
    ================================ */
@@ -530,6 +588,89 @@ button {
 }
 
 /* ================================
+   Add Pet Form
+   ================================ */
+
+.add-form {
+  max-width: 720px;
+
+  margin: 0 auto 80px;
+  padding: 38px;
+
+  background: white;
+
+  border: 1px solid #e7e6df;
+  border-radius: 20px;
+
+  box-shadow: 0 10px 30px rgba(40, 40, 30, 0.06);
+}
+
+.add-form h2 {
+  margin: 0 0 28px;
+
+  color: #252522;
+
+  font-size: 28px;
+  letter-spacing: -1px;
+}
+
+.add-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  margin-bottom: 18px;
+
+  color: #55554f;
+
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.add-form input,
+.add-form select {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #deded7;
+  border-radius: 10px;
+
+  outline: none;
+
+  background: #fafaf7;
+  color: #252522;
+
+  font-size: 14px;
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.add-form input:focus,
+.add-form select:focus {
+  border-color: #9aaa9b;
+
+  box-shadow: 0 0 0 3px rgba(108, 128, 109, 0.1);
+}
+
+.checkbox-label {
+  flex-direction: row !important;
+  align-items: center;
+
+  gap: 10px !important;
+}
+
+.checkbox-label input {
+  width: auto;
+}
+
+.add-form .cta-button {
+  margin-top: 8px;
+}
+
+/* ================================
    Footer
    ================================ */
 
@@ -556,12 +697,147 @@ footer .logo {
 }
 
 /* ================================
+   Pet Details
+   ================================ */
+
+.pet-details {
+  position: fixed;
+  inset: 0;
+
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 30px;
+
+  background: rgba(37, 37, 34, 0.45);
+  backdrop-filter: blur(6px);
+}
+
+.pet-details-image {
+  width: 430px;
+  height: 520px;
+
+  overflow: hidden;
+
+  border-radius: 22px 0 0 22px;
+
+  background: #e8e8e2;
+}
+
+.pet-details-image img {
+  width: 100%;
+  height: 100%;
+
+  display: block;
+
+  object-fit: cover;
+}
+
+.pet-details-content {
+  width: 430px;
+  min-height: 520px;
+
+  position: relative;
+
+  padding: 55px 42px;
+
+  background: white;
+
+  border-radius: 0 22px 22px 0;
+}
+
+.close-details {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+
+  width: 36px;
+  height: 36px;
+
+  border: none;
+  border-radius: 50%;
+
+  background: #f3f2ed;
+  color: #55554f;
+
+  font-size: 24px;
+  line-height: 1;
+
+  transition:
+    background 0.2s ease,
+    transform 0.2s ease;
+}
+
+.close-details:hover {
+  background: #e7e6df;
+  transform: rotate(5deg);
+}
+
+.pet-details-content h2 {
+  margin: 0 0 10px;
+
+  color: #252522;
+
+  font-size: 38px;
+  line-height: 1.1;
+  letter-spacing: -1.5px;
+}
+
+.details-type {
+  margin: 0 0 18px;
+
+  color: #888880;
+
+  font-size: 14px;
+}
+
+.details-status {
+  display: inline-block;
+
+  padding: 8px 12px;
+
+  border-radius: 100px;
+
+  background: #e5eee3;
+  color: #38523d;
+
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.details-description {
+  margin: 28px 0 0;
+
+  color: #73736c;
+
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* ================================
    Responsive
    ================================ */
 
 @media (max-width: 900px) {
+  .navbar {
+    height: auto;
+    min-height: 76px;
+    padding: 16px 24px;
+
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+
   .nav-links {
-    display: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+
+    order: 3;
+    width: 100%;
   }
 
   .hero-section {
@@ -598,12 +874,42 @@ footer .logo {
 }
 
 @media (max-width: 650px) {
+  .pet-card-actions {
+    flex-direction: column;
+  }
+
+  .details-actions {
+    flex-direction: column;
+  }
+
+  .details-actions button {
+    width: 100%;
+  }
   .navbar {
-    padding: 0 20px;
+    height: auto;
+    min-height: 70px;
+    padding: 14px 20px;
+
+    gap: 12px;
+  }
+
+  .logo {
+    font-size: 18px;
+  }
+
+  .nav-links {
+    width: 100%;
+    gap: 14px;
+  }
+
+  .nav-links a {
+    font-size: 12px;
   }
 
   .nav-button {
-    display: none;
+    display: block;
+    padding: 9px 14px;
+    font-size: 12px;
   }
 
   .hero-section {
@@ -660,5 +966,41 @@ footer .logo {
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
+  }
+
+  .pet-info {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .pet-info > div {
+    width: 100%;
+  }
+
+  .pet-details {
+    padding: 20px;
+  }
+
+  .pet-details-image {
+    display: none;
+  }
+
+  .pet-details-content {
+    width: 100%;
+    max-width: 430px;
+    min-height: auto;
+
+    padding: 50px 28px 30px;
+
+    border-radius: 22px;
+  }
+
+  .add-form {
+    margin: 0 20px 60px;
+    padding: 28px 22px;
+  }
+
+  .add-form h2 {
+    font-size: 25px;
   }
 }

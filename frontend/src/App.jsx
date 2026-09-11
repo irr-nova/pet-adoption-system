@@ -26,6 +26,7 @@ function App() {
 
   const [pets, setPets] = useState([]);
   const [favorites, setFavorites] = useState([]);
+  const [showFavorites, setShowFavorites] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -94,11 +95,14 @@ function App() {
       }
 
       try {
-        const response = await fetch("http://127.0.0.1:8000/favorites", {
-          headers: {
-            Authorization: `Bearer ${token}`,
+        const response = await fetch(
+          "https://pet-adoption-system-p7pu.onrender.com/favorites",
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           },
-        });
+        );
 
         if (!response.ok) {
           setFavorites([]);
@@ -229,6 +233,8 @@ function App() {
 
     return matchesSearch && matchesFilter;
   });
+
+  const favoritePets = pets.filter((pet) => favorites.includes(pet.id));
 
   const handleAddPet = async (e) => {
     e.preventDefault();
@@ -392,12 +398,15 @@ function App() {
     const isFavorite = favorites.includes(petId);
 
     try {
-      const response = await fetch(`http://127.0.0.1:8000/favorites/${petId}`, {
-        method: isFavorite ? "DELETE" : "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `https://pet-adoption-system-p7pu.onrender.com/favorites/${petId}`,
+        {
+          method: isFavorite ? "DELETE" : "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         },
-      });
+      );
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -449,15 +458,64 @@ function App() {
         </div>
 
         <div className="nav-links">
-          <a href="#home">Home</a>
-          <a href="#pets">Find a Pet</a>
-          <a href="#add">Add Pet</a>
+          <a href="#home" onClick={() => setShowFavorites(false)}>
+            Home
+          </a>
+
+          <a href="#pets" onClick={() => setShowFavorites(false)}>
+            Find a Pet
+          </a>
+
+          {user && (
+            <a
+              href="#pets"
+              onClick={() => {
+                setShowFavorites(true);
+
+                setTimeout(() => {
+                  document
+                    .getElementById("pets")
+                    ?.scrollIntoView({ behavior: "smooth" });
+                }, 0);
+              }}
+            >
+              ❤️ Favorites
+            </a>
+          )}
+
+          <a
+            href="#add"
+            onClick={(e) => {
+              e.preventDefault();
+
+              if (!user) {
+                alert("Please log in to add a pet.");
+                document.getElementById("auth")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+                return;
+              }
+
+              setShowFavorites(false);
+              setShowAddForm(true);
+
+              setTimeout(() => {
+                document.getElementById("add-form")?.scrollIntoView({
+                  behavior: "smooth",
+                });
+              }, 50);
+            }}
+          >
+            Add Pet
+          </a>
+
           <a href="#about">About</a>
         </div>
 
         {user ? (
           <div className="user-menu">
             <span>Hi, {user.name} 👋</span>
+
             <button
               className="nav-button"
               onClick={() => {
@@ -465,6 +523,7 @@ function App() {
                 setToken(null);
                 setUser(null);
                 setFavorites([]);
+                setShowFavorites(false);
               }}
             >
               Logout
@@ -639,28 +698,38 @@ function App() {
       </section>
 
       {/* Pets */}
-      <section className="pets-section" id="pets">
+      <section
+        className="pets-section"
+        id={showFavorites ? "favorites" : "pets"}
+      >
         <div className="section-heading">
           <div>
-            <p className="eyebrow">MEET YOUR MATCH</p>
-            <h2>Pets looking for a home</h2>
+            <p className="eyebrow">
+              {showFavorites ? "YOUR FAVORITES" : "MEET YOUR MATCH"}
+            </p>
+
+            <h2>
+              {showFavorites ? "Pets you've saved" : "Pets looking for a home"}
+            </h2>
           </div>
 
-          <div className="filters">
-            {["All", "Dog", "Cat"].map((type) => (
-              <button
-                key={type}
-                className={filter === type ? "active" : ""}
-                onClick={() => setFilter(type)}
-              >
-                {type === "All" ? "All Pets" : `${type}s`}
-              </button>
-            ))}
-          </div>
+          {!showFavorites && (
+            <div className="filters">
+              {["All", "Dog", "Cat"].map((type) => (
+                <button
+                  key={type}
+                  className={filter === type ? "active" : ""}
+                  onClick={() => setFilter(type)}
+                >
+                  {type === "All" ? "All Pets" : `${type}s`}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="pet-grid">
-          {filteredPets.map((pet) => (
+          {(showFavorites ? favoritePets : filteredPets).map((pet) => (
             <article className="pet-card" key={pet.id}>
               <div className="pet-image-wrapper">
                 <img src={getPetImage(pet)} alt={pet.name} />
@@ -693,58 +762,50 @@ function App() {
                   </button>
                 )}
 
-                <button
-                  className="view-button"
-                  onClick={() => setSelectedPet(pet)}
-                >
-                  View →
-                </button>
+                <div className="pet-card-actions">
+                  <button
+                    className="view-button"
+                    onClick={() => setSelectedPet(pet)}
+                  >
+                    View Details →
+                  </button>
 
-                <button
-                  className="share-button"
-                  onClick={() => handleSharePet(pet)}
-                >
-                  Share ↗
-                </button>
-
-                {user &&
-                  pet.available_for_adoption &&
-                  pet.owner_id !== user.id && (
-                    <button
-                      className="adopt-button"
-                      onClick={() => handleAdoptPet(pet.id)}
-                    >
-                      Adopt ❤️
-                    </button>
-                  )}
-
-                {user && pet.owner_id === user.id && (
-                  <>
-                    <button
-                      className="edit-button"
-                      onClick={() => setEditPet({ ...pet })}
-                    >
-                      Edit
-                    </button>
-
-                    <button
-                      className="delete-button"
-                      onClick={() => handleDeletePet(pet.id)}
-                    >
-                      Delete
-                    </button>
-                  </>
-                )}
+                  {user &&
+                    pet.available_for_adoption &&
+                    pet.owner_id !== user.id && (
+                      <button
+                        className="adopt-button"
+                        onClick={() => handleAdoptPet(pet.id)}
+                      >
+                        Adopt ❤️
+                      </button>
+                    )}
+                </div>
               </div>
             </article>
           ))}
         </div>
 
-        {filteredPets.length === 0 && (
+        {(showFavorites ? favoritePets : filteredPets).length === 0 && (
           <div className="empty-state">
-            <span>🐾</span>
-            <h3>No pets found</h3>
-            <p>Try searching for another name.</p>
+            <span>{showFavorites ? "❤️" : "🐾"}</span>
+
+            <h3>{showFavorites ? "No favorite pets yet" : "No pets found"}</h3>
+
+            <p>
+              {showFavorites
+                ? "Tap the heart on a pet to save it here."
+                : "Try searching for another name."}
+            </p>
+
+            {showFavorites && (
+              <button
+                className="cta-button"
+                onClick={() => setShowFavorites(false)}
+              >
+                Find a Pet
+              </button>
+            )}
           </div>
         )}
         {selectedPet && (
@@ -763,92 +824,65 @@ function App() {
 
               <p className="eyebrow">PET DETAILS</p>
 
-              {selectedPet.editing ? (
-                <div className="edit-form">
-                  <h2>Edit {selectedPet.name}</h2>
+              <h2>{selectedPet.name}</h2>
 
-                  <input
-                    type="text"
-                    value={selectedPet.name}
-                    onChange={(e) =>
-                      setSelectedPet({
-                        ...selectedPet,
-                        name: e.target.value,
-                      })
-                    }
-                    placeholder="Pet name"
-                  />
+              <p className="details-type">
+                {selectedPet.animal_type} · {selectedPet.age}{" "}
+                {selectedPet.age === 1 ? "year" : "years"} old
+              </p>
 
-                  <select
-                    value={selectedPet.animal_type}
-                    onChange={(e) =>
-                      setSelectedPet({
-                        ...selectedPet,
-                        animal_type: e.target.value,
-                      })
-                    }
-                  >
-                    <option value="Dog">Dog</option>
-                    <option value="Cat">Cat</option>
-                  </select>
+              <span className="details-status">
+                {selectedPet.available_for_adoption
+                  ? "✓ Available for adoption"
+                  : "Currently unavailable"}
+              </span>
 
-                  <input
-                    type="number"
-                    min="0"
-                    value={selectedPet.age}
-                    onChange={(e) =>
-                      setSelectedPet({
-                        ...selectedPet,
-                        age: Number(e.target.value),
-                      })
-                    }
-                    placeholder="Age"
-                  />
+              <p className="details-description">
+                Meet {selectedPet.name}, a lovely{" "}
+                {selectedPet.animal_type.toLowerCase()} looking for a caring
+                family and a loving home.
+              </p>
 
-                  <label>
-                    <input
-                      type="checkbox"
-                      checked={selectedPet.available_for_adoption}
-                      onChange={(e) =>
-                        setSelectedPet({
-                          ...selectedPet,
-                          available_for_adoption: e.target.checked,
-                        })
-                      }
-                    />
-                    Available for adoption
-                  </label>
+              <div className="details-actions">
+                <button
+                  className="share-button"
+                  onClick={() => handleSharePet(selectedPet)}
+                >
+                  Share ↗
+                </button>
 
-                  <button
-                    type="button"
-                    className="cta-button"
-                    onClick={handleUpdatePet}
-                  >
-                    Save Changes
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <h2>{selectedPet.name}</h2>
+                {user &&
+                  selectedPet.available_for_adoption &&
+                  selectedPet.owner_id !== user.id && (
+                    <button
+                      className="adopt-button"
+                      onClick={() => handleAdoptPet(selectedPet.id)}
+                    >
+                      Adopt {selectedPet.name} ❤️
+                    </button>
+                  )}
 
-                  <p className="details-type">
-                    {selectedPet.animal_type} · {selectedPet.age}{" "}
-                    {selectedPet.age === 1 ? "year" : "years"} old
-                  </p>
+                {user && selectedPet.owner_id === user.id && (
+                  <>
+                    <button
+                      className="edit-button"
+                      onClick={() => {
+                        setEditPet({ ...selectedPet });
+                        setSelectedPet(null);
+                      }}
+                    >
+                      Edit Pet
+                    </button>
 
-                  <span className="details-status">
-                    {selectedPet.available_for_adoption
-                      ? "✓ Available for adoption"
-                      : "Currently unavailable"}
-                  </span>
-
-                  <p className="details-description">
-                    Meet {selectedPet.name}, a lovely{" "}
-                    {selectedPet.animal_type.toLowerCase()} looking for a caring
-                    family and a loving home.
-                  </p>
-                </>
-              )}
+                    <button
+                      className="delete-button"
+                      onClick={() => handleDeletePet(selectedPet.id)}
+                    >
+                      Delete Pet
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -961,7 +995,7 @@ function App() {
       </section>
 
       {showAddForm && (
-        <form className="add-form" onSubmit={handleAddPet}>
+        <form className="add-form" id="add-form" onSubmit={handleAddPet}>
           <h2>Add a Pet</h2>
 
           <label>
