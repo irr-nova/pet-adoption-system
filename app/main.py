@@ -5,7 +5,7 @@ import re
 import jwt
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
 from pwdlib import PasswordHash
