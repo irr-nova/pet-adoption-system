@@ -5,18 +5,39 @@ import { supabase } from "./supabaseClient";
 const API_URL =
   "https://pet-adoption-system-p7pu.onrender.com";
 
+const FRONTEND_URL =
+  "https://pet-adoption-frontend-svts.onrender.com";
+
 
 const petImages = {
   dog: [
     "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80",
     "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=900&q=80",
     "https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1543466835-00a7907e9de1?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1561037404-61cd46aa615b?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1530281700549-e82e7bf110d6?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1583337130417-3346a1be7dee?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1558911922-9e5b5d5a2d09?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1553882809-a4f57e9f8a5d?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80",
   ],
 
   cat: [
     "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=900&q=80",
     "https://images.unsplash.com/photo-1519052537078-e6302a4968d4?auto=format&fit=crop&w=900&q=80",
     "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1533743983669-94fa5c4338ec?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1573865526739-10659fec78a5?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1495360010541-f48722b34f7d?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1543852786-1cf6624b9987?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1561948955-570b270e7c36?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1513245543132-31f507417b26?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1495366823158-5f6b1f8e1f8b?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1571566882372-1598d88abd90?auto=format&fit=crop&w=900&q=80",
   ],
 };
 
@@ -29,9 +50,10 @@ function getPetImage(pet) {
 
   const images = petImages[type];
 
-  return images[
-    (pet.id - 1) % images.length
-  ];
+  const index =
+    ((pet.id * 7) + 3) % images.length;
+
+  return images[index];
 }
 
 
@@ -560,6 +582,55 @@ function App() {
     fetchAdoptionRequests();
 
   }, [token]);
+
+
+  // ============================================================
+  // OPEN PET FROM SHARED LINK
+  // ============================================================
+
+  useEffect(() => {
+
+    const params =
+      new URLSearchParams(
+        window.location.search,
+      );
+
+    const petId =
+      params.get("pet");
+
+
+    if (!petId || pets.length === 0) {
+
+      return;
+
+    }
+
+
+    const sharedPet =
+      pets.find(
+        (pet) =>
+          String(pet.id) ===
+          String(petId),
+      );
+
+
+    if (!sharedPet) {
+
+      console.warn(
+        "Shared pet not found:",
+        petId,
+      );
+
+      return;
+
+    }
+
+
+    setSelectedPet(
+      sharedPet,
+    );
+
+  }, [pets]);
 
 
   // ============================================================
@@ -1512,7 +1583,7 @@ function App() {
   ) {
 
     const shareUrl =
-      `${window.location.origin}?pet=${pet.id}`;
+      `${FRONTEND_URL}/?pet=${pet.id}`;
 
 
     try {
@@ -1548,9 +1619,19 @@ function App() {
 
       }
 
-    } catch {
+    } catch (error) {
 
-      // User cancelled sharing.
+      if (
+        error?.name !==
+        "AbortError"
+      ) {
+
+        console.error(
+          "Failed to share pet:",
+          error,
+        );
+
+      }
 
     }
 
