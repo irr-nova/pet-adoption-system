@@ -1,164 +1,249 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import os
-import re
 
-import jwt
+import httpx
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, EmailStr, Field
-from pwdlib import PasswordHash
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text, create_engine, select
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    create_engine,
+)
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
 # ============================================================
-# Configuration
+# ENVIRONMENT
 # ============================================================
 
 load_dotenv()
 
 DATABASE_URL = os.getenv("DATABASE_URL")
-SECRET_KEY = os.getenv("SECRET_KEY")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_PUBLISHABLE_KEY = os.getenv("SUPABASE_PUBLISHABLE_KEY")
 
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not configured")
 
-if not SECRET_KEY:
-    raise RuntimeError("SECRET_KEY is not configured")
+if not SUPABASE_URL:
+    raise RuntimeError("SUPABASE_URL is not configured")
 
-
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+if not SUPABASE_PUBLISHABLE_KEY:
+    raise RuntimeError("SUPABASE_PUBLISHABLE_KEY is not configured")
 
 
 # ============================================================
-# Database
+# DATABASE
 # ============================================================
 
 engine = create_engine(DATABASE_URL)
 
 SessionLocal = sessionmaker(
-    bind=engine,
     autocommit=False,
-    autoflush=False
+    autoflush=False,
+    bind=engine,
 )
 
 Base = declarative_base()
 
 
+def get_db():
+    db = SessionLocal()
+
+    try:
+        yield db
+    finally:
+        db.close()
+
+
 # ============================================================
-# Models
+# DATABASE MODELS
 # ============================================================
 
 class UserModel(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    name = Column(String, nullable=False)
-    email = Column(String, unique=True, nullable=False, index=True)
-    password_hash = Column(String, nullable=False)
-    phone = Column(String, nullable=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+    )
+
+    name = Column(
+        String,
+        nullable=False,
+    )
+
+    email = Column(
+        String,
+        unique=True,
+        nullable=False,
+        index=True,
+    )
+
+    password_hash = Column(
+        String,
+        nullable=True,
+    )
+
+    phone = Column(
+        String,
+        nullable=True,
+    )
+
+    supabase_user_id = Column(
+        String,
+        unique=True,
+        nullable=True,
+        index=True,
+    )
 
 
 class PetModel(Base):
     __tablename__ = "pets"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    name = Column(String, nullable=False)
-    animal_type = Column(String, nullable=False)
-    age = Column(Integer, nullable=False)
-    available_for_adoption = Column(Boolean, default=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+    )
+
+    name = Column(
+        String,
+        nullable=False,
+    )
+
+    animal_type = Column(
+        String,
+        nullable=False,
+    )
+
+    age = Column(
+        Integer,
+        nullable=False,
+    )
+
+    available_for_adoption = Column(
+        Boolean,
+        default=True,
+    )
+
     owner_id = Column(
         Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
     adopted_by = Column(
         Integer,
-        ForeignKey("users.id", ondelete="SET NULL"),
-        nullable=True
+        ForeignKey(
+            "users.id",
+            ondelete="SET NULL",
+        ),
+        nullable=True,
     )
 
     adopted_at = Column(
         DateTime(timezone=True),
-        nullable=True
+        nullable=True,
     )
 
 
 class FavoriteModel(Base):
     __tablename__ = "favorites"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+    )
+
     user_id = Column(
         Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
+
     pet_id = Column(
         Integer,
-        ForeignKey("pets.id", ondelete="CASCADE"),
-        nullable=False
+        ForeignKey(
+            "pets.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
 
 class AdoptionRequestModel(Base):
     __tablename__ = "adoption_requests"
 
-    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True,
+        autoincrement=True,
+    )
 
     pet_id = Column(
         Integer,
-        ForeignKey("pets.id", ondelete="CASCADE"),
-        nullable=False
+        ForeignKey(
+            "pets.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
     requester_id = Column(
         Integer,
-        ForeignKey("users.id", ondelete="CASCADE"),
-        nullable=False
+        ForeignKey(
+            "users.id",
+            ondelete="CASCADE",
+        ),
+        nullable=False,
     )
 
-    message = Column(Text, nullable=True)
+    message = Column(
+        Text,
+        nullable=True,
+    )
 
     status = Column(
         String(20),
         nullable=False,
-        default="Pending"
+        default="Pending",
     )
 
     requested_at = Column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc)
+        default=lambda: datetime.now(timezone.utc),
     )
 
     responded_at = Column(
         DateTime(timezone=True),
-        nullable=True
+        nullable=True,
     )
 
 
-Base.metadata.create_all(bind=engine)
-
-
 # ============================================================
-# Schemas
+# PYDANTIC SCHEMAS
 # ============================================================
-
-class UserCreate(BaseModel):
-    name: str = Field(min_length=2, max_length=100)
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=100)
-    phone: str | None = Field(default=None, max_length=20)
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
 
 class UserResponse(BaseModel):
     id: int
@@ -167,15 +252,22 @@ class UserResponse(BaseModel):
     phone: str | None = None
 
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str
-
-
 class PetCreate(BaseModel):
-    name: str = Field(min_length=1, max_length=100)
-    animal_type: str = Field(min_length=1, max_length=50)
-    age: int = Field(ge=0, le=100)
+    name: str = Field(
+        min_length=1,
+        max_length=100,
+    )
+
+    animal_type: str = Field(
+        min_length=1,
+        max_length=50,
+    )
+
+    age: int = Field(
+        ge=0,
+        le=100,
+    )
+
     available_for_adoption: bool = True
 
 
@@ -187,7 +279,10 @@ class Pet(PetCreate):
 
 
 class AdoptionRequestCreate(BaseModel):
-    message: str | None = Field(default=None, max_length=1000)
+    message: str | None = Field(
+        default=None,
+        max_length=1000,
+    )
 
 
 class AdoptionDecision(BaseModel):
@@ -195,72 +290,141 @@ class AdoptionDecision(BaseModel):
 
 
 # ============================================================
-# Authentication
+# AUTHENTICATION
 # ============================================================
 
-password_hash = PasswordHash.recommended()
 security = HTTPBearer()
 
 
-def create_access_token(user_id: int):
-    expire = datetime.now(timezone.utc) + timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
-    )
-
-    payload = {
-        "sub": str(user_id),
-        "exp": expire
-    }
-
-    return jwt.encode(
-        payload,
-        SECRET_KEY,
-        algorithm=ALGORITHM
-    )
-
-
-def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(security)
+async def get_supabase_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     token = credentials.credentials
 
     try:
-        payload = jwt.decode(
-            token,
-            SECRET_KEY,
-            algorithms=[ALGORITHM]
-        )
-
-        user_id = payload.get("sub")
-
-        if user_id is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid authentication token"
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(
+                f"{SUPABASE_URL}/auth/v1/user",
+                headers={
+                    "apikey": SUPABASE_PUBLISHABLE_KEY,
+                    "Authorization": f"Bearer {token}",
+                },
             )
 
-        return int(user_id)
+        # Temporary safe diagnostic.
+        # This prints only Supabase's response status/body.
+        # The access token itself is NEVER printed.
+        if response.status_code != 200:
+            print(
+                "SUPABASE AUTH ERROR:",
+                response.status_code,
+                response.text,
+            )
 
-    except (
-        jwt.ExpiredSignatureError,
-        jwt.InvalidTokenError,
-        ValueError
-    ):
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid or expired authentication session",
+            )
+
+        return response.json()
+
+    except httpx.RequestError as error:
+        print(
+            "SUPABASE AUTH REQUEST ERROR:",
+            str(error),
+        )
+
+        raise HTTPException(
+            status_code=503,
+            detail="Authentication service is temporarily unavailable",
+        )
+
+
+async def get_current_user(
+    supabase_user=Depends(get_supabase_user),
+    db=Depends(get_db),
+):
+    supabase_user_id = supabase_user.get("id")
+    email = supabase_user.get("email")
+
+    if not supabase_user_id or not email:
         raise HTTPException(
             status_code=401,
-            detail="Invalid or expired authentication token"
+            detail="Invalid authentication information",
         )
+
+    user_metadata = supabase_user.get("user_metadata") or {}
+
+    name = (
+        user_metadata.get("name")
+        or user_metadata.get("full_name")
+        or user_metadata.get("display_name")
+        or email.split("@")[0]
+    )
+
+    phone = user_metadata.get("phone")
+
+    # First try to find the user using the Supabase Auth UUID.
+    user = (
+        db.query(UserModel)
+        .filter(
+            UserModel.supabase_user_id == supabase_user_id
+        )
+        .first()
+    )
+
+    # If this is an existing local account that has not yet
+    # been linked to Supabase, match it by email.
+    if not user:
+        user = (
+            db.query(UserModel)
+            .filter(
+                UserModel.email == email
+            )
+            .first()
+        )
+
+        if user:
+            user.supabase_user_id = supabase_user_id
+
+            if name and not user.name:
+                user.name = name
+
+            if phone and not user.phone:
+                user.phone = phone
+
+            db.commit()
+            db.refresh(user)
+
+    # Otherwise create a new local application user.
+    if not user:
+        user = UserModel(
+            name=name,
+            email=email,
+            phone=phone,
+            password_hash=None,
+            supabase_user_id=supabase_user_id,
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    return user
 
 
 # ============================================================
-# FastAPI
+# FASTAPI APP
 # ============================================================
 
 app = FastAPI(
-    title="PawConnect API",
-    description="Pet adoption platform API",
-    version="1.0"
+    title="PawConnect Pet Adoption System"
 )
+
+
+# ============================================================
+# CORS
+# ============================================================
 
 app.add_middleware(
     CORSMiddleware,
@@ -273,769 +437,521 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # ============================================================
-# Registration
+# BASIC ROUTES
 # ============================================================
 
-@app.post("/register", response_model=UserResponse)
-def register(user: UserCreate):
+@app.get("/")
+def root():
+    return {
+        "message": "PawConnect API is running"
+    }
 
-    name = user.name.strip()
-    email = str(user.email).strip().lower()
 
-    if len(name) < 2:
-        raise HTTPException(
-            status_code=400,
-            detail="Name must contain at least 2 characters"
-        )
-
-    if not re.fullmatch(r"[A-Za-z][A-Za-z .'-]*", name):
-        raise HTTPException(
-            status_code=400,
-            detail="Please enter a valid name"
-        )
-
-    if len(user.password) < 8:
-        raise HTTPException(
-            status_code=400,
-            detail="Password must contain at least 8 characters"
-        )
-
-    db = SessionLocal()
-
-    try:
-        existing_user = db.execute(
-            select(UserModel).where(UserModel.email == email)
-        ).scalar_one_or_none()
-
-        if existing_user:
-            raise HTTPException(
-                status_code=400,
-                detail="An account with this email already exists"
-            )
-
-        new_user = UserModel(
-            name=name,
-            email=email,
-            password_hash=password_hash.hash(user.password),
-            phone=user.phone.strip() if user.phone else None
-        )
-
-        db.add(new_user)
-        db.commit()
-        db.refresh(new_user)
-
-        return new_user
-
-    except HTTPException:
-        raise
-
-    except SQLAlchemyError:
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="Database error"
-        )
-
-    finally:
-        db.close()
+@app.get(
+    "/me",
+    response_model=UserResponse,
+)
+async def get_me(
+    current_user=Depends(get_current_user),
+):
+    return current_user
 
 
 # ============================================================
-# Login
+# PET ROUTES
 # ============================================================
 
-@app.post("/login", response_model=TokenResponse)
-def login(credentials: LoginRequest):
-
-    email = str(credentials.email).strip().lower()
-
-    db = SessionLocal()
-
-    try:
-        user = db.execute(
-            select(UserModel).where(UserModel.email == email)
-        ).scalar_one_or_none()
-
-        if user is None:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid email or password"
-            )
-
-        if not password_hash.verify(
-            credentials.password,
-            user.password_hash
-        ):
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid email or password"
-            )
-
-        token = create_access_token(user.id)
-
-        return {
-            "access_token": token,
-            "token_type": "bearer"
-        }
-
-    finally:
-        db.close()
+@app.get(
+    "/pets",
+    response_model=list[Pet],
+)
+def get_pets(
+    db=Depends(get_db),
+):
+    return (
+        db.query(PetModel)
+        .order_by(PetModel.id)
+        .all()
+    )
 
 
-# ============================================================
-# Current User
-# ============================================================
-
-@app.get("/me", response_model=UserResponse)
-def get_me(user_id: int = Depends(get_current_user)):
-
-    db = SessionLocal()
-
-    try:
-        user = db.get(UserModel, user_id)
-
-        if user is None:
-            raise HTTPException(
-                status_code=404,
-                detail="User not found"
-            )
-
-        return user
-
-    finally:
-        db.close()
-
-
-# ============================================================
-# Get Pets
-# ============================================================
-
-@app.get("/pets", response_model=list[Pet])
-def get_pets():
-
-    db = SessionLocal()
-
-    try:
-        pets = db.execute(
-            select(PetModel)
-        ).scalars().all()
-
-        return pets
-
-    finally:
-        db.close()
-
-
-# ============================================================
-# Get Single Pet
-# ============================================================
-
-@app.get("/pets/{pet_id}", response_model=Pet)
-def get_pet(pet_id: int):
-
-    db = SessionLocal()
-
-    try:
-        pet = db.get(PetModel, pet_id)
-
-        if pet is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Pet not found"
-            )
-
-        return pet
-
-    finally:
-        db.close()
-
-
-# ============================================================
-# Add Pet
-# ============================================================
-
-@app.post("/pets", response_model=Pet)
-def add_pet(
+@app.post(
+    "/pets",
+    response_model=Pet,
+)
+async def create_pet(
     pet: PetCreate,
-    user_id: int = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
+    new_pet = PetModel(
+        name=pet.name,
+        animal_type=pet.animal_type,
+        age=pet.age,
+        available_for_adoption=pet.available_for_adoption,
+        owner_id=current_user.id,
+    )
 
-    db = SessionLocal()
+    db.add(new_pet)
+    db.commit()
+    db.refresh(new_pet)
 
-    try:
-        new_pet = PetModel(
-            name=pet.name.strip(),
-            animal_type=pet.animal_type.strip(),
-            age=pet.age,
-            available_for_adoption=pet.available_for_adoption,
-            owner_id=user_id
-        )
-
-        db.add(new_pet)
-        db.commit()
-        db.refresh(new_pet)
-
-        return new_pet
-
-    except SQLAlchemyError:
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="Database error"
-        )
-
-    finally:
-        db.close()
+    return new_pet
 
 
-# ============================================================
-# Update Pet
-# ============================================================
-
-@app.put("/pets/{pet_id}", response_model=Pet)
-def update_pet(
+@app.put(
+    "/pets/{pet_id}",
+    response_model=Pet,
+)
+async def update_pet(
     pet_id: int,
-    pet_data: PetCreate,
-    user_id: int = Depends(get_current_user)
+    pet: PetCreate,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
+    existing_pet = (
+        db.query(PetModel)
+        .filter(PetModel.id == pet_id)
+        .first()
+    )
 
-    db = SessionLocal()
-
-    try:
-        pet = db.get(PetModel, pet_id)
-
-        if pet is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Pet not found"
-            )
-
-        if pet.owner_id != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="You can only update your own pets"
-            )
-
-        if pet.adopted_by is not None:
-            raise HTTPException(
-                status_code=400,
-                detail="An adopted pet cannot be edited"
-            )
-
-        pet.name = pet_data.name.strip()
-        pet.animal_type = pet_data.animal_type.strip()
-        pet.age = pet_data.age
-        pet.available_for_adoption = pet_data.available_for_adoption
-
-        db.commit()
-        db.refresh(pet)
-
-        return pet
-
-    except HTTPException:
-        raise
-
-    except SQLAlchemyError:
-        db.rollback()
+    if not existing_pet:
         raise HTTPException(
-            status_code=500,
-            detail="Database error"
+            status_code=404,
+            detail="Pet not found",
         )
 
-    finally:
-        db.close()
+    if existing_pet.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only update your own pets",
+        )
+
+    existing_pet.name = pet.name
+    existing_pet.animal_type = pet.animal_type
+    existing_pet.age = pet.age
+    existing_pet.available_for_adoption = (
+        pet.available_for_adoption
+    )
+
+    db.commit()
+    db.refresh(existing_pet)
+
+    return existing_pet
 
 
-# ============================================================
-# Delete Pet
-# ============================================================
-
-@app.delete("/pets/{pet_id}")
-def delete_pet(
+@app.delete(
+    "/pets/{pet_id}",
+)
+async def delete_pet(
     pet_id: int,
-    user_id: int = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
+    existing_pet = (
+        db.query(PetModel)
+        .filter(PetModel.id == pet_id)
+        .first()
+    )
 
-    db = SessionLocal()
+    if not existing_pet:
+        raise HTTPException(
+            status_code=404,
+            detail="Pet not found",
+        )
 
-    try:
-        pet = db.get(PetModel, pet_id)
+    if existing_pet.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only delete your own pets",
+        )
 
-        if pet is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Pet not found"
-            )
+    db.delete(existing_pet)
+    db.commit()
 
-        if pet.owner_id != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="You can only delete your own pets"
-            )
+    return {
+        "message": "Pet deleted successfully"
+    }
 
-        if pet.adopted_by is not None:
-            raise HTTPException(
-                status_code=400,
-                detail="An adopted pet cannot be deleted"
-            )
 
-        db.delete(pet)
-        db.commit()
+# ============================================================
+# FAVORITES
+# ============================================================
 
+@app.get(
+    "/favorites",
+)
+async def get_favorites(
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    favorites = (
+        db.query(FavoriteModel)
+        .filter(
+            FavoriteModel.user_id == current_user.id
+        )
+        .all()
+    )
+
+    return [
+        favorite.pet_id
+        for favorite in favorites
+    ]
+
+
+@app.post(
+    "/favorites/{pet_id}",
+)
+async def add_favorite(
+    pet_id: int,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    pet = (
+        db.query(PetModel)
+        .filter(PetModel.id == pet_id)
+        .first()
+    )
+
+    if not pet:
+        raise HTTPException(
+            status_code=404,
+            detail="Pet not found",
+        )
+
+    existing = (
+        db.query(FavoriteModel)
+        .filter(
+            FavoriteModel.user_id == current_user.id,
+            FavoriteModel.pet_id == pet_id,
+        )
+        .first()
+    )
+
+    if existing:
         return {
-            "message": "Pet deleted successfully"
+            "message": "Pet is already in favorites"
         }
 
-    except HTTPException:
-        raise
+    favorite = FavoriteModel(
+        user_id=current_user.id,
+        pet_id=pet_id,
+    )
 
-    except SQLAlchemyError:
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="Database error"
-        )
+    db.add(favorite)
+    db.commit()
 
-    finally:
-        db.close()
+    return {
+        "message": "Pet added to favorites"
+    }
 
 
-# ============================================================
-# Adoption Requests - Request Adoption
-# ============================================================
-
-@app.post("/pets/{pet_id}/adoption-request")
-def create_adoption_request(
+@app.delete(
+    "/favorites/{pet_id}",
+)
+async def remove_favorite(
     pet_id: int,
-    request_data: AdoptionRequestCreate,
-    user_id: int = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
-
-    db = SessionLocal()
-
-    try:
-        pet = db.get(PetModel, pet_id)
-
-        if pet is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Pet not found"
-            )
-
-        if not pet.available_for_adoption:
-            raise HTTPException(
-                status_code=400,
-                detail="This pet is no longer available for adoption"
-            )
-
-        if pet.owner_id == user_id:
-            raise HTTPException(
-                status_code=400,
-                detail="You cannot request your own pet"
-            )
-
-        existing_request = db.execute(
-            select(AdoptionRequestModel).where(
-                AdoptionRequestModel.pet_id == pet_id,
-                AdoptionRequestModel.requester_id == user_id,
-                AdoptionRequestModel.status == "Pending"
-            )
-        ).scalar_one_or_none()
-
-        if existing_request:
-            raise HTTPException(
-                status_code=400,
-                detail="You already have a pending request for this pet"
-            )
-
-        adoption_request = AdoptionRequestModel(
-            pet_id=pet_id,
-            requester_id=user_id,
-            message=request_data.message.strip()
-            if request_data.message
-            else None,
-            status="Pending"
+    favorite = (
+        db.query(FavoriteModel)
+        .filter(
+            FavoriteModel.user_id == current_user.id,
+            FavoriteModel.pet_id == pet_id,
         )
+        .first()
+    )
 
-        db.add(adoption_request)
-        db.commit()
-        db.refresh(adoption_request)
-
-        return {
-            "message": "Adoption request sent successfully",
-            "request_id": adoption_request.id,
-            "status": adoption_request.status
-        }
-
-    except HTTPException:
-        raise
-
-    except SQLAlchemyError:
-        db.rollback()
+    if not favorite:
         raise HTTPException(
-            status_code=500,
-            detail="Database error"
+            status_code=404,
+            detail="Favorite not found",
         )
 
-    finally:
-        db.close()
+    db.delete(favorite)
+    db.commit()
+
+    return {
+        "message": "Pet removed from favorites"
+    }
 
 
 # ============================================================
-# My Adoption Requests
+# ADOPTION REQUESTS
 # ============================================================
 
-@app.get("/adoption-requests/mine")
-def get_my_adoption_requests(
-    user_id: int = Depends(get_current_user)
+@app.post(
+    "/pets/{pet_id}/adoption-request",
+)
+async def create_adoption_request(
+    pet_id: int,
+    request: AdoptionRequestCreate,
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
+    pet = (
+        db.query(PetModel)
+        .filter(PetModel.id == pet_id)
+        .first()
+    )
 
-    db = SessionLocal()
+    if not pet:
+        raise HTTPException(
+            status_code=404,
+            detail="Pet not found",
+        )
 
-    try:
-        requests = db.execute(
-            select(
-                AdoptionRequestModel,
-                PetModel,
-                UserModel
-            )
-            .join(
-                PetModel,
-                AdoptionRequestModel.pet_id == PetModel.id
-            )
-            .join(
-                UserModel,
-                PetModel.owner_id == UserModel.id
-            )
-            .where(
-                AdoptionRequestModel.requester_id == user_id
-            )
-            .order_by(
-                AdoptionRequestModel.requested_at.desc()
-            )
-        ).all()
+    if not pet.available_for_adoption:
+        raise HTTPException(
+            status_code=400,
+            detail="This pet is no longer available for adoption",
+        )
 
-        return [
+    if pet.owner_id == current_user.id:
+        raise HTTPException(
+            status_code=400,
+            detail="You cannot request adoption of your own pet",
+        )
+
+    existing_request = (
+        db.query(AdoptionRequestModel)
+        .filter(
+            AdoptionRequestModel.pet_id == pet_id,
+            AdoptionRequestModel.requester_id == current_user.id,
+            AdoptionRequestModel.status == "Pending",
+        )
+        .first()
+    )
+
+    if existing_request:
+        raise HTTPException(
+            status_code=400,
+            detail="You already have a pending request for this pet",
+        )
+
+    adoption_request = AdoptionRequestModel(
+        pet_id=pet_id,
+        requester_id=current_user.id,
+        message=request.message,
+        status="Pending",
+        requested_at=datetime.now(timezone.utc),
+    )
+
+    db.add(adoption_request)
+    db.commit()
+    db.refresh(adoption_request)
+
+    return {
+        "message": "Adoption request submitted successfully",
+        "request_id": adoption_request.id,
+        "status": adoption_request.status,
+    }
+
+
+@app.get(
+    "/adoption-requests/mine",
+)
+async def get_my_adoption_requests(
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
+):
+    requests = (
+        db.query(
+            AdoptionRequestModel,
+            PetModel,
+        )
+        .join(
+            PetModel,
+            AdoptionRequestModel.pet_id == PetModel.id,
+        )
+        .filter(
+            AdoptionRequestModel.requester_id
+            == current_user.id
+        )
+        .order_by(
+            AdoptionRequestModel.requested_at.desc()
+        )
+        .all()
+    )
+
+    result = []
+
+    for request, pet in requests:
+        result.append(
             {
                 "id": request.id,
                 "pet_id": pet.id,
                 "pet_name": pet.name,
-                "owner_name": owner.name,
-                "owner_email": owner.email,
-                "owner_phone": owner.phone,
+                "animal_type": pet.animal_type,
+                "age": pet.age,
                 "message": request.message,
                 "status": request.status,
                 "requested_at": request.requested_at,
-                "responded_at": request.responded_at
+                "responded_at": request.responded_at,
             }
-            for request, pet, owner in requests
-        ]
+        )
 
-    finally:
-        db.close()
+    return result
 
 
-# ============================================================
-# Owner's Adoption Requests
-# ============================================================
-
-@app.get("/adoption-requests/received")
-def get_received_adoption_requests(
-    user_id: int = Depends(get_current_user)
+@app.get(
+    "/adoption-requests/received",
+)
+async def get_received_adoption_requests(
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
+    requests = (
+        db.query(
+            AdoptionRequestModel,
+            PetModel,
+            UserModel,
+        )
+        .join(
+            PetModel,
+            AdoptionRequestModel.pet_id == PetModel.id,
+        )
+        .join(
+            UserModel,
+            AdoptionRequestModel.requester_id == UserModel.id,
+        )
+        .filter(
+            PetModel.owner_id == current_user.id
+        )
+        .order_by(
+            AdoptionRequestModel.requested_at.desc()
+        )
+        .all()
+    )
 
-    db = SessionLocal()
+    result = []
 
-    try:
-        requests = db.execute(
-            select(
-                AdoptionRequestModel,
-                PetModel,
-                UserModel
-            )
-            .join(
-                PetModel,
-                AdoptionRequestModel.pet_id == PetModel.id
-            )
-            .join(
-                UserModel,
-                AdoptionRequestModel.requester_id == UserModel.id
-            )
-            .where(
-                PetModel.owner_id == user_id
-            )
-            .order_by(
-                AdoptionRequestModel.requested_at.desc()
-            )
-        ).all()
-
-        return [
+    for request, pet, requester in requests:
+        result.append(
             {
                 "id": request.id,
                 "pet_id": pet.id,
                 "pet_name": pet.name,
+                "animal_type": pet.animal_type,
+                "age": pet.age,
+                "requester_id": requester.id,
                 "requester_name": requester.name,
                 "requester_email": requester.email,
                 "requester_phone": requester.phone,
                 "message": request.message,
                 "status": request.status,
                 "requested_at": request.requested_at,
-                "responded_at": request.responded_at
+                "responded_at": request.responded_at,
             }
-            for request, pet, requester in requests
-        ]
+        )
 
-    finally:
-        db.close()
+    return result
 
 
-# ============================================================
-# Accept / Reject Adoption Request
-# ============================================================
-
-@app.put("/adoption-requests/{request_id}")
-def decide_adoption_request(
+@app.put(
+    "/adoption-requests/{request_id}",
+)
+async def respond_to_adoption_request(
     request_id: int,
     decision: AdoptionDecision,
-    user_id: int = Depends(get_current_user)
+    current_user=Depends(get_current_user),
+    db=Depends(get_db),
 ):
+    request = (
+        db.query(AdoptionRequestModel)
+        .filter(
+            AdoptionRequestModel.id == request_id
+        )
+        .first()
+    )
 
-    decision_value = decision.decision.strip().lower()
+    if not request:
+        raise HTTPException(
+            status_code=404,
+            detail="Adoption request not found",
+        )
 
-    if decision_value not in ["accept", "reject"]:
+    pet = (
+        db.query(PetModel)
+        .filter(PetModel.id == request.pet_id)
+        .first()
+    )
+
+    if not pet:
+        raise HTTPException(
+            status_code=404,
+            detail="Pet not found",
+        )
+
+    if pet.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only respond to requests for your own pets",
+        )
+
+    if request.status != "Pending":
         raise HTTPException(
             status_code=400,
-            detail="Decision must be accept or reject"
+            detail="This request has already been responded to",
         )
 
-    db = SessionLocal()
+    normalized_decision = decision.decision.strip().lower()
 
-    try:
-        adoption_request = db.get(
-            AdoptionRequestModel,
-            request_id
+    if normalized_decision not in ["accepted", "rejected"]:
+        raise HTTPException(
+            status_code=400,
+            detail="Decision must be Accepted or Rejected",
         )
 
-        if adoption_request is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Adoption request not found"
-            )
+    now = datetime.now(timezone.utc)
 
-        pet = db.get(
-            PetModel,
-            adoption_request.pet_id
-        )
-
-        if pet is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Pet not found"
-            )
-
-        if pet.owner_id != user_id:
-            raise HTTPException(
-                status_code=403,
-                detail="Only the pet owner can manage this request"
-            )
-
-        if adoption_request.status != "Pending":
-            raise HTTPException(
-                status_code=400,
-                detail="This request has already been processed"
-            )
-
-        if not pet.available_for_adoption:
-            raise HTTPException(
-                status_code=400,
-                detail="This pet is no longer available for adoption"
-            )
-
-        now = datetime.now(timezone.utc)
-
-        if decision_value == "reject":
-
-            adoption_request.status = "Rejected"
-            adoption_request.responded_at = now
-
-            db.commit()
-
-            return {
-                "message": "Adoption request rejected",
-                "status": "Rejected"
-            }
-
-        # ACCEPT
-
-        adoption_request.status = "Accepted"
-        adoption_request.responded_at = now
-
-        pet.adopted_by = adoption_request.requester_id
-        pet.adopted_at = now
-        pet.available_for_adoption = False
-
-        # Reject all other pending requests for this pet
-        other_requests = db.execute(
-            select(AdoptionRequestModel).where(
-                AdoptionRequestModel.pet_id == pet.id,
-                AdoptionRequestModel.id != adoption_request.id,
-                AdoptionRequestModel.status == "Pending"
-            )
-        ).scalars().all()
-
-        for other_request in other_requests:
-            other_request.status = "Rejected"
-            other_request.responded_at = now
+    if normalized_decision == "rejected":
+        request.status = "Rejected"
+        request.responded_at = now
 
         db.commit()
 
         return {
-            "message": "Adoption request accepted",
-            "status": "Accepted"
+            "message": "Adoption request rejected",
+            "status": "Rejected",
         }
 
-    except HTTPException:
-        raise
-
-    except SQLAlchemyError:
-        db.rollback()
+    # Accepted
+    if not pet.available_for_adoption:
         raise HTTPException(
-            status_code=500,
-            detail="Database error"
+            status_code=400,
+            detail="This pet is no longer available for adoption",
         )
 
-    finally:
-        db.close()
+    pet.available_for_adoption = False
+    pet.adopted_by = request.requester_id
+    pet.adopted_at = now
 
+    request.status = "Accepted"
+    request.responded_at = now
 
-# ============================================================
-# Favorites
-# ============================================================
-
-@app.get("/favorites")
-def get_favorites(
-    user_id: int = Depends(get_current_user)
-):
-
-    db = SessionLocal()
-
-    try:
-        favorites = db.execute(
-            select(FavoriteModel).where(
-                FavoriteModel.user_id == user_id
-            )
-        ).scalars().all()
-
-        return [
-            {
-                "id": favorite.id,
-                "pet_id": favorite.pet_id
-            }
-            for favorite in favorites
-        ]
-
-    finally:
-        db.close()
-
-
-@app.post("/favorites/{pet_id}")
-def add_favorite(
-    pet_id: int,
-    user_id: int = Depends(get_current_user)
-):
-
-    db = SessionLocal()
-
-    try:
-        pet = db.get(PetModel, pet_id)
-
-        if pet is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Pet not found"
-            )
-
-        existing_favorite = db.execute(
-            select(FavoriteModel).where(
-                FavoriteModel.user_id == user_id,
-                FavoriteModel.pet_id == pet_id
-            )
-        ).scalar_one_or_none()
-
-        if existing_favorite:
-            return {
-                "message": "Pet is already in favorites",
-                "favorite": True
-            }
-
-        favorite = FavoriteModel(
-            user_id=user_id,
-            pet_id=pet_id
+    # Automatically reject all other pending requests
+    # for the same pet.
+    other_requests = (
+        db.query(AdoptionRequestModel)
+        .filter(
+            AdoptionRequestModel.pet_id == pet.id,
+            AdoptionRequestModel.id != request.id,
+            AdoptionRequestModel.status == "Pending",
         )
+        .all()
+    )
 
-        db.add(favorite)
-        db.commit()
-        db.refresh(favorite)
+    for other_request in other_requests:
+        other_request.status = "Rejected"
+        other_request.responded_at = now
 
-        return {
-            "message": "Pet added to favorites",
-            "favorite": True
-        }
+    db.commit()
 
-    except HTTPException:
-        raise
-
-    except SQLAlchemyError:
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="Database error"
-        )
-
-    finally:
-        db.close()
-
-
-@app.delete("/favorites/{pet_id}")
-def remove_favorite(
-    pet_id: int,
-    user_id: int = Depends(get_current_user)
-):
-
-    db = SessionLocal()
-
-    try:
-        favorite = db.execute(
-            select(FavoriteModel).where(
-                FavoriteModel.user_id == user_id,
-                FavoriteModel.pet_id == pet_id
-            )
-        ).scalar_one_or_none()
-
-        if favorite is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Pet is not in favorites"
-            )
-
-        db.delete(favorite)
-        db.commit()
-
-        return {
-            "message": "Pet removed from favorites",
-            "favorite": False
-        }
-
-    except HTTPException:
-        raise
-
-    except SQLAlchemyError:
-        db.rollback()
-        raise HTTPException(
-            status_code=500,
-            detail="Database error"
-        )
-
-    finally:
-        db.close()
+    return {
+        "message": "Adoption request accepted",
+        "status": "Accepted",
+    }
