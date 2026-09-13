@@ -203,6 +203,16 @@ function App() {
   ] = useState(false);
 
 
+  // NEW:
+  // Wait until Supabase has finished restoring
+  // the saved login session before loading user data.
+
+  const [
+    authInitialized,
+    setAuthInitialized,
+  ] = useState(false);
+
+
   const [authForm, setAuthForm] =
     useState({
       name: "",
@@ -461,37 +471,64 @@ function App() {
     let mounted = true;
 
 
-    async function loadSession() {
+    async function initializeAuth() {
 
-      const {
-        data: {
-          session: currentSession,
-        },
-      } =
-        await supabase.auth.getSession();
+      try {
+
+        const {
+          data: {
+            session: currentSession,
+          },
+        } =
+          await supabase.auth.getSession();
 
 
-      if (!mounted) {
+        if (!mounted) {
 
-        return;
+          return;
+
+        }
+
+
+        setSession(
+          currentSession,
+        );
+
+
+        setToken(
+          currentSession?.access_token ||
+            null,
+        );
+
+
+        setAuthInitialized(
+          true,
+        );
+
+      } catch (error) {
+
+        console.error(
+          "Failed to restore Supabase session:",
+          error,
+        );
+
+
+        if (mounted) {
+
+          setSession(null);
+
+          setToken(null);
+
+          setAuthInitialized(true);
+
+        }
 
       }
-
-
-      setSession(
-        currentSession,
-      );
-
-
-      setToken(
-        currentSession?.access_token ||
-          null,
-      );
 
     }
 
 
-    loadSession();
+    initializeAuth();
 
 
     const {
@@ -520,6 +557,11 @@ function App() {
           setToken(
             currentSession?.access_token ||
               null,
+          );
+
+
+          setAuthInitialized(
+            true,
           );
 
 
@@ -566,6 +608,10 @@ function App() {
   }, []);
 
 
+  // ============================================================
+  // LOAD PETS
+  // ============================================================
+
   useEffect(() => {
 
     fetchPets();
@@ -573,7 +619,18 @@ function App() {
   }, []);
 
 
+  // ============================================================
+  // LOAD USER-SPECIFIC DATA
+  // ============================================================
+
   useEffect(() => {
+
+    if (!authInitialized) {
+
+      return;
+
+    }
+
 
     loadCurrentUser();
 
@@ -581,7 +638,10 @@ function App() {
 
     fetchAdoptionRequests();
 
-  }, [token]);
+  }, [
+    token,
+    authInitialized,
+  ]);
 
 
   // ============================================================
