@@ -1,216 +1,699 @@
 import { useEffect, useState } from "react";
 import "./App.css";
+import { supabase } from "./supabaseClient";
+
+const API_URL =
+  "https://pet-adoption-system-p7pu.onrender.com";
+
+
+const petImages = {
+  dog: [
+    "https://images.unsplash.com/photo-1552053831-71594a27632d?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1558788353-f76d92427f16?auto=format&fit=crop&w=900&q=80",
+  ],
+
+  cat: [
+    "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1519052537078-e6302a4968d4?auto=format&fit=crop&w=900&q=80",
+    "https://images.unsplash.com/photo-1574158622682-e40e69881006?auto=format&fit=crop&w=900&q=80",
+  ],
+};
+
+
+function getPetImage(pet) {
+  const type =
+    pet.animal_type?.toLowerCase() === "cat"
+      ? "cat"
+      : "dog";
+
+  const images = petImages[type];
+
+  return images[
+    (pet.id - 1) % images.length
+  ];
+}
+
 
 function App() {
-  const [search, setSearch] = useState("");
-  const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem("token"));
-  const [authMode, setAuthMode] = useState("login");
-  const [authForm, setAuthForm] = useState({
-    name: "",
-    email: "",
-    password: "",
-    phone: "",
-  });
-  const [filter, setFilter] = useState("All");
-  const [selectedPet, setSelectedPet] = useState(null);
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editPet, setEditPet] = useState(null);
 
-  const [newPet, setNewPet] = useState({
-    name: "",
-    animal_type: "Dog",
-    age: "",
-    available_for_adoption: true,
-  });
+  const [session, setSession] =
+    useState(null);
 
-  const [pets, setPets] = useState([]);
-  const [favorites, setFavorites] = useState([]);
-  const [showFavorites, setShowFavorites] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [token, setToken] =
+    useState(null);
 
-  useEffect(() => {
-    fetch("https://pet-adoption-system-p7pu.onrender.com/pets")
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error("Failed to fetch pets");
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setPets(data);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error(error);
-        setError("Unable to load pets");
-        setLoading(false);
-      });
-  }, []);
+  const [user, setUser] =
+    useState(null);
 
-  useEffect(() => {
-    const restoreUser = async () => {
-      const savedToken = localStorage.getItem("token");
+  const [pets, setPets] =
+    useState([]);
 
-      if (!savedToken) {
-        return;
-      }
+  const [favorites, setFavorites] =
+    useState([]);
 
-      try {
-        const response = await fetch(
-          "https://pet-adoption-system-p7pu.onrender.com/me",
-          {
-            headers: {
-              Authorization: `Bearer ${savedToken}`,
-            },
-          },
-        );
+  const [myRequests, setMyRequests] =
+    useState([]);
 
-        if (!response.ok) {
-          localStorage.removeItem("token");
-          setToken(null);
-          return;
-        }
+  const [
+    receivedRequests,
+    setReceivedRequests,
+  ] = useState([]);
 
-        const userData = await response.json();
 
-        setToken(savedToken);
-        setUser(userData);
-      } catch (error) {
-        console.error("Failed to restore user:", error);
-        localStorage.removeItem("token");
-        setToken(null);
-      }
+  const [search, setSearch] =
+    useState("");
+
+  const [filter, setFilter] =
+    useState("All");
+
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+
+  const [showAuth, setShowAuth] =
+    useState(false);
+
+  const [authMode, setAuthMode] =
+    useState("login");
+
+
+  const [
+    authLoading,
+    setAuthLoading,
+  ] = useState(false);
+
+  const [
+    authMessage,
+    setAuthMessage,
+  ] = useState("");
+
+  const [
+    authError,
+    setAuthError,
+  ] = useState("");
+
+
+  const [
+    showForgotPassword,
+    setShowForgotPassword,
+  ] = useState(false);
+
+  const [
+    forgotEmail,
+    setForgotEmail,
+  ] = useState("");
+
+  const [
+    forgotLoading,
+    setForgotLoading,
+  ] = useState(false);
+
+
+  const [
+    showResetPassword,
+    setShowResetPassword,
+  ] = useState(false);
+
+  const [
+    newPassword,
+    setNewPassword,
+  ] = useState("");
+
+  const [
+    confirmNewPassword,
+    setConfirmNewPassword,
+  ] = useState("");
+
+  const [
+    resetLoading,
+    setResetLoading,
+  ] = useState(false);
+
+
+  const [
+    showAddForm,
+    setShowAddForm,
+  ] = useState(false);
+
+
+  const [
+    selectedPet,
+    setSelectedPet,
+  ] = useState(null);
+
+
+  const [
+    requestPet,
+    setRequestPet,
+  ] = useState(null);
+
+  const [
+    requestMessage,
+    setRequestMessage,
+  ] = useState("");
+
+
+  const [
+    showRequests,
+    setShowRequests,
+  ] = useState(false);
+
+
+  const [
+    editingPet,
+    setEditingPet,
+  ] = useState(null);
+
+
+  const [
+    showDeleteAccount,
+    setShowDeleteAccount,
+  ] = useState(false);
+
+  const [
+    deleteLoading,
+    setDeleteLoading,
+  ] = useState(false);
+
+
+  const [authForm, setAuthForm] =
+    useState({
+      name: "",
+      email: "",
+      password: "",
+      phone: "",
+    });
+
+
+  const [petForm, setPetForm] =
+    useState({
+      name: "",
+      animal_type: "Dog",
+      age: "",
+      available_for_adoption: true,
+    });
+
+
+  // ============================================================
+  // API HELPER
+  // ============================================================
+
+  async function apiFetch(
+    endpoint,
+    options = {},
+  ) {
+
+    const headers = {
+      "Content-Type":
+        "application/json",
+
+      ...(options.headers || {}),
     };
 
-    restoreUser();
-  }, []);
 
-  useEffect(() => {
-    const loadFavorites = async () => {
-      if (!token) {
-        setFavorites([]);
-        return;
-      }
+    let currentToken = token;
 
-      try {
-        const response = await fetch(
-          "https://pet-adoption-system-p7pu.onrender.com/favorites",
-          {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
-          },
-        );
 
-        if (!response.ok) {
-          setFavorites([]);
-          return;
-        }
+    if (!currentToken) {
 
-        const data = await response.json();
+      const {
+        data: {
+          session: currentSession,
+        },
+      } =
+        await supabase.auth.getSession();
 
-        setFavorites(data.map((favorite) => favorite.pet_id));
-      } catch (error) {
-        console.error("Failed to load favorites:", error);
-        setFavorites([]);
-      }
-    };
 
-    loadFavorites();
-  }, [token]);
-
-  const getPetImage = (pet) => {
-    if (pet.animal_type === "Dog") {
-      return "https://images.unsplash.com/photo-1552053831-71594a27632d?w=800";
+      currentToken =
+        currentSession?.access_token ||
+        null;
     }
 
-    if (pet.animal_type === "Cat") {
-      return "https://images.unsplash.com/photo-1518791841217-8f162f1e1131?w=800";
+
+    if (currentToken) {
+
+      headers.Authorization =
+        `Bearer ${currentToken}`;
+
     }
 
-    return "https://images.unsplash.com/photo-1450778869180-41d0601e046e?w=800";
-  };
 
-  const handleAuth = async (e) => {
-    e.preventDefault();
+    const response =
+      await fetch(
+        `${API_URL}${endpoint}`,
+        {
+          ...options,
+          headers,
+        },
+      );
+
+
+    let data = null;
+
 
     try {
-      if (authMode === "register") {
-        const registerResponse = await fetch(
-          "https://pet-adoption-system-p7pu.onrender.com/register",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              name: authForm.name,
-              email: authForm.email,
-              password: authForm.password,
-              phone: authForm.phone,
-            }),
-          },
+
+      data =
+        await response.json();
+
+    } catch {
+
+      data = null;
+
+    }
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data?.detail ||
+          "Something went wrong",
+      );
+
+    }
+
+
+    return data;
+
+  }
+
+
+  // ============================================================
+  // LOAD CURRENT USER
+  // ============================================================
+
+  async function loadCurrentUser() {
+
+    if (!token) {
+
+      setUser(null);
+
+      return;
+
+    }
+
+
+    try {
+
+      const data =
+        await apiFetch("/me");
+
+      setUser(data);
+
+    } catch {
+
+      setUser(null);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // LOAD PETS
+  // ============================================================
+
+  async function fetchPets() {
+
+    setLoading(true);
+
+    setError("");
+
+
+    try {
+
+      const data =
+        await apiFetch("/pets");
+
+      setPets(data);
+
+    } catch (err) {
+
+      setError(err.message);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // LOAD FAVORITES
+  // ============================================================
+
+  async function fetchFavorites() {
+
+    if (!token) {
+
+      setFavorites([]);
+
+      return;
+
+    }
+
+
+    try {
+
+      const data =
+        await apiFetch(
+          "/favorites",
         );
 
-        if (!registerResponse.ok) {
-          const data = await registerResponse.json();
-          throw new Error(data.detail || "Registration failed");
+
+      setFavorites(data);
+
+    } catch {
+
+      setFavorites([]);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // LOAD ADOPTION REQUESTS
+  // ============================================================
+
+  async function fetchAdoptionRequests() {
+
+    if (!token) {
+
+      setMyRequests([]);
+
+      setReceivedRequests([]);
+
+      return;
+
+    }
+
+
+    try {
+
+      const [
+        mine,
+        received,
+      ] =
+        await Promise.all([
+          apiFetch(
+            "/adoption-requests/mine",
+          ),
+
+          apiFetch(
+            "/adoption-requests/received",
+          ),
+        ]);
+
+
+      setMyRequests(mine);
+
+      setReceivedRequests(
+        received,
+      );
+
+    } catch {
+
+      setMyRequests([]);
+
+      setReceivedRequests([]);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // SUPABASE AUTH STATE
+  // ============================================================
+
+  useEffect(() => {
+
+    let mounted = true;
+
+
+    async function loadSession() {
+
+      const {
+        data: {
+          session: currentSession,
+        },
+      } =
+        await supabase.auth.getSession();
+
+
+      if (!mounted) {
+
+        return;
+
+      }
+
+
+      setSession(
+        currentSession,
+      );
+
+
+      setToken(
+        currentSession?.access_token ||
+          null,
+      );
+
+    }
+
+
+    loadSession();
+
+
+    const {
+      data: {
+        subscription,
+      },
+    } =
+      supabase.auth.onAuthStateChange(
+        (
+          event,
+          currentSession,
+        ) => {
+
+          if (!mounted) {
+
+            return;
+
+          }
+
+
+          setSession(
+            currentSession,
+          );
+
+
+          setToken(
+            currentSession?.access_token ||
+              null,
+          );
+
+
+          if (
+            event ===
+            "PASSWORD_RECOVERY"
+          ) {
+
+            setShowResetPassword(
+              true,
+            );
+
+            setShowAuth(false);
+
+          }
+
+
+          if (
+            event === "SIGNED_OUT"
+          ) {
+
+            setUser(null);
+
+            setFavorites([]);
+
+            setMyRequests([]);
+
+            setReceivedRequests([]);
+
+          }
+
+        },
+      );
+
+
+    return () => {
+
+      mounted = false;
+
+      subscription.unsubscribe();
+
+    };
+
+  }, []);
+
+
+  useEffect(() => {
+
+    fetchPets();
+
+  }, []);
+
+
+  useEffect(() => {
+
+    loadCurrentUser();
+
+    fetchFavorites();
+
+    fetchAdoptionRequests();
+
+  }, [token]);
+
+
+  // ============================================================
+  // AUTHENTICATION
+  // ============================================================
+
+  async function handleAuthSubmit(
+    event,
+  ) {
+
+    event.preventDefault();
+
+
+    setAuthLoading(true);
+
+    setAuthMessage("");
+
+    setAuthError("");
+
+
+    try {
+
+      if (
+        authMode ===
+        "register"
+      ) {
+
+        const {
+          data,
+          error: signUpError,
+        } =
+          await supabase.auth.signUp({
+            email:
+              authForm.email,
+
+            password:
+              authForm.password,
+
+            options: {
+
+              emailRedirectTo:
+                window.location.origin,
+
+              data: {
+
+                name:
+                  authForm.name,
+
+                phone:
+                  authForm.phone ||
+                  null,
+
+              },
+
+            },
+
+          });
+
+
+        if (signUpError) {
+
+          throw signUpError;
+
         }
 
-        alert("Registration successful! Please log in. 🐾");
 
-        setAuthMode("login");
+        if (!data.session) {
+
+          setAuthMessage(
+            "Account created! Please check your email and click the verification link before logging in.",
+          );
+
+        } else {
+
+          setAuthMessage(
+            "Account created successfully.",
+          );
+
+        }
+
+
         setAuthForm({
           name: "",
-          email: authForm.email,
+          email:
+            authForm.email,
           password: "",
           phone: "",
         });
 
+
+        setAuthMode(
+          "login",
+        );
+
+
         return;
+
       }
 
-      const loginResponse = await fetch(
-        "https://pet-adoption-system-p7pu.onrender.com/login",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: authForm.email,
-            password: authForm.password,
-          }),
-        },
+
+      const {
+        data,
+        error: signInError,
+      } =
+        await supabase.auth
+          .signInWithPassword({
+
+            email:
+              authForm.email,
+
+            password:
+              authForm.password,
+
+          });
+
+
+      if (signInError) {
+
+        throw signInError;
+
+      }
+
+
+      setSession(
+        data.session,
       );
 
-      if (!loginResponse.ok) {
-        const data = await loginResponse.json();
-        throw new Error(data.detail || "Login failed");
-      }
 
-      const loginData = await loginResponse.json();
-
-      localStorage.setItem("token", loginData.access_token);
-      setToken(loginData.access_token);
-
-      const meResponse = await fetch(
-        "https://pet-adoption-system-p7pu.onrender.com/me",
-        {
-          headers: {
-            Authorization: `Bearer ${loginData.access_token}`,
-          },
-        },
+      setToken(
+        data.session
+          ?.access_token ||
+          null,
       );
 
-      if (!meResponse.ok) {
-        throw new Error("Unable to get user details");
-      }
-
-      const userData = await meResponse.json();
-      setUser(userData);
 
       setAuthForm({
         name: "",
@@ -219,852 +702,3664 @@ function App() {
         phone: "",
       });
 
-      alert(`Welcome to PawConnect, ${userData.name}! 🐾`);
-    } catch (error) {
-      console.error(error);
-      alert(error.message || "Something went wrong");
-    }
-  };
 
-  const filteredPets = pets.filter((pet) => {
-    const matchesSearch = pet.name.toLowerCase().includes(search.toLowerCase());
+      setShowAuth(false);
 
-    const matchesFilter = filter === "All" || pet.animal_type === filter;
+      setAuthMessage("");
 
-    return matchesSearch && matchesFilter;
-  });
+      setAuthError("");
 
-  const favoritePets = pets.filter((pet) => favorites.includes(pet.id));
+    } catch (err) {
 
-  const handleAddPet = async (e) => {
-    e.preventDefault();
-
-    try {
-      const response = await fetch(
-        "https://pet-adoption-system-p7pu.onrender.com/pets",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            ...newPet,
-            age: Number(newPet.age),
-          }),
-        },
+      setAuthError(
+        err.message ||
+          "Authentication failed.",
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to add pet");
+    } finally {
+
+      setAuthLoading(false);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // GOOGLE LOGIN
+  // ============================================================
+
+  async function handleGoogleLogin() {
+
+    setAuthLoading(true);
+
+    setAuthError("");
+
+    setAuthMessage("");
+
+
+    try {
+
+      const {
+        error: googleError,
+      } =
+        await supabase.auth
+          .signInWithOAuth({
+
+            provider:
+              "google",
+
+            options: {
+
+              redirectTo:
+                window.location.origin,
+
+            },
+
+          });
+
+
+      if (googleError) {
+
+        throw googleError;
+
       }
 
-      const addedPet = await response.json();
+    } catch (err) {
 
-      setPets([...pets, addedPet]);
-
-      setNewPet({
-        name: "",
-        animal_type: "Dog",
-        age: "",
-        available_for_adoption: true,
-      });
-
-      setShowAddForm(false);
-
-      alert("Pet added successfully! 🐾");
-    } catch (error) {
-      console.error(error);
-      alert("Unable to add pet");
-    }
-  };
-
-  const handleUpdatePet = async () => {
-    try {
-      const response = await fetch(
-        `https://pet-adoption-system-p7pu.onrender.com/pets/${editPet.id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify({
-            name: editPet.name,
-            animal_type: editPet.animal_type,
-            age: Number(editPet.age),
-            available_for_adoption: editPet.available_for_adoption,
-          }),
-        },
+      setAuthError(
+        err.message ||
+          "Google sign-in failed.",
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to update pet");
+
+      setAuthLoading(false);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // FORGOT PASSWORD
+  // ============================================================
+
+  async function handleForgotPassword(
+    event,
+  ) {
+
+    event.preventDefault();
+
+
+    if (!forgotEmail) {
+
+      setAuthError(
+        "Please enter your email address.",
+      );
+
+      return;
+
+    }
+
+
+    setForgotLoading(true);
+
+    setAuthError("");
+
+    setAuthMessage("");
+
+
+    try {
+
+      const {
+        error: resetError,
+      } =
+        await supabase.auth
+          .resetPasswordForEmail(
+            forgotEmail,
+            {
+
+              redirectTo:
+                window.location.origin,
+
+            },
+          );
+
+
+      if (resetError) {
+
+        throw resetError;
+
       }
 
-      const updatedPet = await response.json();
 
-      setPets(pets.map((pet) => (pet.id === updatedPet.id ? updatedPet : pet)));
+      setAuthMessage(
+        "If an account exists with that email, a password reset link has been sent.",
+      );
 
-      setEditPet(null);
+    } catch (err) {
 
-      alert("Pet updated successfully! 🐾");
-    } catch (error) {
-      console.error(error);
-      alert("Unable to update pet");
+      setAuthError(
+        err.message ||
+          "Unable to send password reset email.",
+      );
+
+    } finally {
+
+      setForgotLoading(false);
+
     }
-  };
 
-  const handleDeletePet = async (petId) => {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this pet?",
-    );
+  }
+
+
+  // ============================================================
+  // RESET PASSWORD
+  // ============================================================
+
+  async function handleResetPassword(
+    event,
+  ) {
+
+    event.preventDefault();
+
+
+    if (
+      newPassword.length < 8
+    ) {
+
+      setAuthError(
+        "Password must be at least 8 characters.",
+      );
+
+      return;
+
+    }
+
+
+    if (
+      newPassword !==
+      confirmNewPassword
+    ) {
+
+      setAuthError(
+        "Passwords do not match.",
+      );
+
+      return;
+
+    }
+
+
+    setResetLoading(true);
+
+    setAuthError("");
+
+    setAuthMessage("");
+
+
+    try {
+
+      const {
+        error: updateError,
+      } =
+        await supabase.auth.updateUser({
+
+          password:
+            newPassword,
+
+        });
+
+
+      if (updateError) {
+
+        throw updateError;
+
+      }
+
+
+      setAuthMessage(
+        "Password updated successfully. You are now logged in.",
+      );
+
+
+      setNewPassword("");
+
+      setConfirmNewPassword("");
+
+
+      setTimeout(() => {
+
+        setShowResetPassword(
+          false,
+        );
+
+      }, 1000);
+
+    } catch (err) {
+
+      setAuthError(
+        err.message ||
+          "Unable to update password.",
+      );
+
+    } finally {
+
+      setResetLoading(false);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // LOGOUT
+  // ============================================================
+
+  async function logout() {
+
+    await supabase.auth.signOut();
+
+
+    setSession(null);
+
+    setToken(null);
+
+    setUser(null);
+
+    setFavorites([]);
+
+    setMyRequests([]);
+
+    setReceivedRequests([]);
+
+  }
+
+
+  // ============================================================
+  // DELETE ACCOUNT
+  // ============================================================
+
+  async function handleDeleteAccount() {
+
+    const confirmed =
+      window.confirm(
+        "Are you absolutely sure you want to delete your PawConnect account? This will permanently delete your account, pets, favorites and adoption activity. This action cannot be undone.",
+      );
+
 
     if (!confirmed) {
+
       return;
+
     }
 
+
+    setDeleteLoading(true);
+
+
     try {
-      const response = await fetch(
-        `https://pet-adoption-system-p7pu.onrender.com/pets/${petId}`,
+
+      await apiFetch(
+        "/account",
         {
           method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
         },
       );
 
-      if (!response.ok) {
-        throw new Error("Failed to delete pet");
-      }
 
-      setPets(pets.filter((pet) => pet.id !== petId));
+      await supabase.auth.signOut();
 
-      if (selectedPet?.id === petId) {
-        setSelectedPet(null);
-      }
 
-      alert("Pet deleted successfully! 🐾");
-    } catch (error) {
-      console.error(error);
-      alert("Unable to delete pet");
+      setSession(null);
+
+      setToken(null);
+
+      setUser(null);
+
+      setFavorites([]);
+
+      setMyRequests([]);
+
+      setReceivedRequests([]);
+
+      setShowDeleteAccount(
+        false,
+      );
+
+
+      alert(
+        "Your PawConnect account has been deleted successfully.",
+      );
+
+
+      window.location.hash =
+        "pets";
+
+
+    } catch (err) {
+
+      alert(
+        err.message ||
+          "Unable to delete account.",
+      );
+
+    } finally {
+
+      setDeleteLoading(false);
+
     }
-  };
 
-  const handleAdoptPet = async (petId) => {
+  }
+
+
+  // ============================================================
+  // FAVORITES
+  // ============================================================
+
+  async function toggleFavorite(
+    petId,
+  ) {
+
     if (!user) {
-      alert("Please log in to adopt a pet.");
-      return;
-    }
 
-    try {
-      const response = await fetch(
-        `https://pet-adoption-system-p7pu.onrender.com/pets/${petId}/adopt`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
+      setAuthMode(
+        "login",
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to adopt pet");
-      }
+      setShowAuth(true);
 
-      const adoptedPet = await response.json();
+      return;
 
-      setPets(pets.map((pet) => (pet.id === adoptedPet.id ? adoptedPet : pet)));
-
-      if (selectedPet?.id === adoptedPet.id) {
-        setSelectedPet(adoptedPet);
-      }
-
-      alert("Pet adopted successfully! 🐾❤️");
-    } catch (error) {
-      console.error(error);
-      alert(error.message || "Unable to adopt pet");
     }
-  };
 
-  const handleFavorite = async (petId) => {
+
+    try {
+
+      if (
+        favorites.includes(
+          petId,
+        )
+      ) {
+
+        await apiFetch(
+          `/favorites/${petId}`,
+          {
+            method:
+              "DELETE",
+          },
+        );
+
+
+        setFavorites(
+          favorites.filter(
+            (id) =>
+              id !== petId,
+          ),
+        );
+
+      } else {
+
+        await apiFetch(
+          `/favorites/${petId}`,
+          {
+            method:
+              "POST",
+          },
+        );
+
+
+        setFavorites([
+          ...favorites,
+          petId,
+        ]);
+
+      }
+
+    } catch (err) {
+
+      alert(err.message);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // ADOPTION REQUEST
+  // ============================================================
+
+  function openAdoptionRequest(
+    pet,
+  ) {
+
     if (!user) {
-      alert("Please log in to add favorites.");
+
+      setAuthMode(
+        "login",
+      );
+
+      setShowAuth(true);
+
       return;
+
     }
 
-    const isFavorite = favorites.includes(petId);
+
+    if (
+      pet.owner_id ===
+      user.id
+    ) {
+
+      alert(
+        "You cannot request adoption for your own pet.",
+      );
+
+      return;
+
+    }
+
+
+    setRequestPet(pet);
+
+    setRequestMessage("");
+
+  }
+
+
+  async function submitAdoptionRequest(
+    event,
+  ) {
+
+    event.preventDefault();
+
+
+    if (!requestPet) {
+
+      return;
+
+    }
+
 
     try {
-      const response = await fetch(
-        `https://pet-adoption-system-p7pu.onrender.com/favorites/${petId}`,
+
+      await apiFetch(
+        `/pets/${requestPet.id}/adoption-request`,
         {
-          method: isFavorite ? "DELETE" : "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+
+              message:
+                requestMessage,
+
+            }),
+
         },
       );
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Failed to update favorite");
-      }
 
-      if (isFavorite) {
-        setFavorites(favorites.filter((id) => id !== petId));
-      } else {
-        setFavorites([...favorites, petId]);
-      }
-    } catch (error) {
-      console.error(error);
-      alert(error.message || "Unable to update favorite");
+      alert(
+        "Adoption request sent. The owner can now review your details and contact you.",
+      );
+
+
+      setRequestPet(null);
+
+      setRequestMessage("");
+
+
+      await fetchAdoptionRequests();
+
+    } catch (err) {
+
+      alert(err.message);
+
     }
-  };
 
-  const handleSharePet = async (pet) => {
-    const shareUrl = `${window.location.origin}/?pet=${pet.id}`;
+  }
 
-    const shareData = {
-      title: `Meet ${pet.name} 🐾`,
-      text: `${pet.name} is a ${pet.age}-year-old ${pet.animal_type} looking for a loving home!`,
-      url: shareUrl,
-    };
+
+  // ============================================================
+  // ADOPTION REQUEST DECISION
+  // ============================================================
+
+  async function decideRequest(
+    requestId,
+    decision,
+  ) {
+
+    const message =
+      decision === "accepted"
+        ? "Accept this adoption request?"
+        : "Reject this adoption request?";
+
+
+    if (
+      !window.confirm(
+        message,
+      )
+    ) {
+
+      return;
+
+    }
+
 
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(shareUrl);
-        alert("Pet link copied to clipboard! 🔗");
-      }
-    } catch (error) {
-      if (error.name !== "AbortError") {
-        console.error("Failed to share pet:", error);
-        alert("Unable to share this pet.");
-      }
+
+      await apiFetch(
+        `/adoption-requests/${requestId}`,
+        {
+
+          method:
+            "PUT",
+
+          body:
+            JSON.stringify({
+
+              decision,
+
+            }),
+
+        },
+      );
+
+
+      await fetchPets();
+
+      await fetchAdoptionRequests();
+
+
+      alert(
+        decision ===
+        "accepted"
+          ? "Request accepted. The pet is now marked as adopted."
+          : "Request rejected.",
+      );
+
+    } catch (err) {
+
+      alert(err.message);
+
     }
-  };
+
+  }
+
+
+  // ============================================================
+  // ADD PET
+  // ============================================================
+
+  async function handleAddPet(
+    event,
+  ) {
+
+    event.preventDefault();
+
+
+    try {
+
+      await apiFetch(
+        "/pets",
+        {
+
+          method:
+            "POST",
+
+          body:
+            JSON.stringify({
+
+              name:
+                petForm.name,
+
+              animal_type:
+                petForm.animal_type,
+
+              age:
+                Number(
+                  petForm.age,
+                ),
+
+              available_for_adoption:
+                petForm.available_for_adoption,
+
+            }),
+
+        },
+      );
+
+
+      setPetForm({
+
+        name: "",
+
+        animal_type:
+          "Dog",
+
+        age: "",
+
+        available_for_adoption:
+          true,
+
+      });
+
+
+      setShowAddForm(
+        false,
+      );
+
+
+      await fetchPets();
+
+
+      alert(
+        "Pet added successfully.",
+      );
+
+    } catch (err) {
+
+      alert(err.message);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // EDIT PET
+  // ============================================================
+
+  function startEditing(
+    pet,
+  ) {
+
+    setEditingPet({
+
+      ...pet,
+
+      age:
+        String(
+          pet.age,
+        ),
+
+    });
+
+
+    setSelectedPet(null);
+
+  }
+
+
+  async function handleEditPet(
+    event,
+  ) {
+
+    event.preventDefault();
+
+
+    try {
+
+      await apiFetch(
+        `/pets/${editingPet.id}`,
+        {
+
+          method:
+            "PUT",
+
+          body:
+            JSON.stringify({
+
+              name:
+                editingPet.name,
+
+              animal_type:
+                editingPet.animal_type,
+
+              age:
+                Number(
+                  editingPet.age,
+                ),
+
+              available_for_adoption:
+                editingPet.available_for_adoption,
+
+            }),
+
+        },
+      );
+
+
+      setEditingPet(null);
+
+
+      await fetchPets();
+
+
+      alert(
+        "Pet updated successfully.",
+      );
+
+    } catch (err) {
+
+      alert(err.message);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // DELETE PET
+  // ============================================================
+
+  async function deletePet(
+    petId,
+  ) {
+
+    if (
+      !window.confirm(
+        "Are you sure you want to delete this pet?",
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      await apiFetch(
+        `/pets/${petId}`,
+        {
+
+          method:
+            "DELETE",
+
+        },
+      );
+
+
+      setSelectedPet(null);
+
+
+      await fetchPets();
+
+
+      alert(
+        "Pet deleted successfully.",
+      );
+
+    } catch (err) {
+
+      alert(err.message);
+
+    }
+
+  }
+
+
+  // ============================================================
+  // SHARE
+  // ============================================================
+
+  async function sharePet(
+    pet,
+  ) {
+
+    const shareUrl =
+      `${window.location.origin}?pet=${pet.id}`;
+
+
+    try {
+
+      if (
+        navigator.share
+      ) {
+
+        await navigator.share({
+
+          title:
+            `${pet.name} - PawConnect`,
+
+          text:
+            `Check out ${pet.name} on PawConnect!`,
+
+          url:
+            shareUrl,
+
+        });
+
+      } else {
+
+        await navigator.clipboard
+          .writeText(
+            shareUrl,
+          );
+
+
+        alert(
+          "Pet link copied to clipboard.",
+        );
+
+      }
+
+    } catch {
+
+      // User cancelled sharing.
+
+    }
+
+  }
+
+
+  // ============================================================
+  // FILTERED PETS
+  // ============================================================
+
+  const filteredPets =
+    pets.filter((pet) => {
+
+      const matchesSearch =
+        pet.name
+          .toLowerCase()
+          .includes(
+            search.toLowerCase(),
+          );
+
+
+      const matchesFilter =
+        filter === "All" ||
+        pet.animal_type
+          .toLowerCase() ===
+          filter.toLowerCase();
+
+
+      return (
+        matchesSearch &&
+        matchesFilter
+      );
+
+    });
+
+
+  const myPets =
+    user
+      ? pets.filter(
+          (pet) =>
+            pet.owner_id ===
+            user.id,
+        )
+      : [];
+
+
+  const favoritePets =
+    user
+      ? pets.filter(
+          (pet) =>
+            favorites.includes(
+              pet.id,
+            ),
+        )
+      : [];
+
+
+  // ============================================================
+  // RENDER
+  // ============================================================
 
   return (
+
     <div className="app">
-      {/* Navigation */}
+
+
+      {/* NAVBAR */}
+
       <nav className="navbar">
+
         <div className="logo">
-          <span className="logo-icon">🐾</span>
-          <span>PawConnect</span>
+
+          <span className="logo-icon">
+            🐾
+          </span>
+
+          PawConnect
+
         </div>
 
-        <div className="nav-links">
-          <a href="#home" onClick={() => setShowFavorites(false)}>
-            Home
-          </a>
 
-          <a href="#pets" onClick={() => setShowFavorites(false)}>
+        <div className="nav-links">
+
+          <a href="#pets">
             Find a Pet
           </a>
 
-          {user && (
-            <a
-              href="#pets"
-              onClick={() => {
-                setShowFavorites(true);
 
-                setTimeout(() => {
-                  document
-                    .getElementById("pets")
-                    ?.scrollIntoView({ behavior: "smooth" });
-                }, 0);
-              }}
-            >
-              ❤️ Favorites
-            </a>
+          {user && (
+            <>
+
+              <a href="#favorites">
+                Favorites
+              </a>
+
+
+              <a href="#my-pets">
+                My Pets
+              </a>
+
+
+              <button
+                className="nav-button"
+                onClick={() =>
+                  setShowRequests(
+                    true,
+                  )
+                }
+              >
+
+                Requests
+
+
+                {receivedRequests.filter(
+                  (request) =>
+                    request.status ===
+                    "Pending",
+                ).length > 0 && (
+
+                  <span>
+
+                    {" "}
+
+                    (
+
+                    {
+                      receivedRequests.filter(
+                        (
+                          request,
+                        ) =>
+                          request.status ===
+                          "Pending",
+                      ).length
+                    }
+
+                    )
+
+                  </span>
+
+                )}
+
+              </button>
+
+            </>
           )}
 
-          <a
-            href="#add"
-            onClick={(e) => {
-              e.preventDefault();
-
-              if (!user) {
-                alert("Please log in to add a pet.");
-                document.getElementById("auth")?.scrollIntoView({
-                  behavior: "smooth",
-                });
-                return;
-              }
-
-              setShowFavorites(false);
-              setShowAddForm(true);
-
-              setTimeout(() => {
-                document.getElementById("add-form")?.scrollIntoView({
-                  behavior: "smooth",
-                });
-              }, 50);
-            }}
-          >
-            Add Pet
-          </a>
-
-          <a href="#about">About</a>
         </div>
 
+
         {user ? (
+
           <div className="user-menu">
-            <span>Hi, {user.name} 👋</span>
+
+            <span>
+              Hi, {user.name}
+            </span>
+
 
             <button
               className="nav-button"
-              onClick={() => {
-                localStorage.removeItem("token");
-                setToken(null);
-                setUser(null);
-                setFavorites([]);
-                setShowFavorites(false);
-              }}
+              onClick={logout}
             >
               Logout
             </button>
+
+
+            <button
+              className="delete-account-button"
+              onClick={() =>
+                setShowDeleteAccount(
+                  true,
+                )
+              }
+            >
+              Delete Account
+            </button>
+
           </div>
+
         ) : (
+
           <button
             className="nav-button"
             onClick={() => {
-              document
-                .getElementById("auth")
-                ?.scrollIntoView({ behavior: "smooth" });
+
+              setAuthMode(
+                "login",
+              );
+
+              setAuthMessage(
+                "",
+              );
+
+              setAuthError(
+                "",
+              );
+
+              setShowAuth(
+                true,
+              );
+
             }}
           >
-            Get Started
+            Log in
           </button>
+
         )}
+
       </nav>
 
-      {/* Hero */}
-      <section className="hero-section" id="home">
+
+      {/* HERO */}
+
+      <section className="hero-section">
+
         <div className="hero-content">
-          <p className="eyebrow">🐾 FIND YOUR NEW BEST FRIEND</p>
 
-          <h1>
-            Every pet deserves
-            <br />
-            <span>a loving home.</span>
-          </h1>
-
-          <p className="hero-text">
-            Discover pets waiting for a second chance at happiness. Find a
-            companion who is ready to become part of your family.
+          <p className="eyebrow">
+            FIND YOUR NEW BEST FRIEND
           </p>
 
+
+          <h1>
+
+            Every pet deserves
+
+            <br />
+
+            a{" "}
+
+            <span>
+              loving home.
+            </span>
+
+          </h1>
+
+
+          <p className="hero-text">
+
+            Discover pets looking for
+            their forever homes and
+            connect directly with
+            responsible pet owners.
+
+          </p>
+
+
           <div className="search-box">
-            <span>⌕</span>
+
+            <span>
+              ⌕
+            </span>
+
+
             <input
               type="text"
               placeholder="Search by pet name..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value,
+                )
+              }
             />
+
           </div>
+
         </div>
+
 
         <div className="hero-decoration">
-          <div className="hero-circle"></div>
-          <div className="hero-paw">🐾</div>
+
+          <div className="hero-circle">
+          </div>
+
+
+          <div className="hero-paw">
+            🐾
+          </div>
+
         </div>
+
       </section>
 
-      {/* Authentication */}
-      <section className="auth-section" id="auth">
-        {user ? (
-          <>
-            <p className="eyebrow">WELCOME BACK</p>
-            <h2>Hi, {user.name}! 🐾</h2>
-            <p>You are logged in and can now add pets and adopt pets.</p>
-          </>
-        ) : (
-          <>
-            <p className="eyebrow">
-              {authMode === "login" ? "WELCOME BACK" : "JOIN PAWCONNECT"}
-            </p>
 
-            <h2>
-              {authMode === "login"
-                ? "Log in to PawConnect"
-                : "Create your account"}
-            </h2>
+      {/* PETS */}
 
-            <p>
-              {authMode === "login"
-                ? "Log in to add and adopt pets."
-                : "Create one account to add pets and adopt pets."}
-            </p>
-
-            <form className="auth-form" onSubmit={handleAuth}>
-              {authMode === "register" && (
-                <>
-                  <label>
-                    Full Name
-                    <input
-                      type="text"
-                      value={authForm.name}
-                      onChange={(e) =>
-                        setAuthForm({
-                          ...authForm,
-                          name: e.target.value,
-                        })
-                      }
-                      placeholder="Enter your name"
-                      required
-                    />
-                  </label>
-
-                  <label>
-                    Phone
-                    <input
-                      type="tel"
-                      value={authForm.phone}
-                      onChange={(e) =>
-                        setAuthForm({
-                          ...authForm,
-                          phone: e.target.value,
-                        })
-                      }
-                      placeholder="Enter your phone number"
-                    />
-                  </label>
-                </>
-              )}
-
-              <label>
-                Email
-                <input
-                  type="email"
-                  value={authForm.email}
-                  onChange={(e) =>
-                    setAuthForm({
-                      ...authForm,
-                      email: e.target.value,
-                    })
-                  }
-                  placeholder="Enter your email"
-                  required
-                />
-              </label>
-
-              <label>
-                Password
-                <input
-                  type="password"
-                  value={authForm.password}
-                  onChange={(e) =>
-                    setAuthForm({
-                      ...authForm,
-                      password: e.target.value,
-                    })
-                  }
-                  placeholder="Enter your password"
-                  minLength="6"
-                  required
-                />
-              </label>
-
-              <button type="submit" className="cta-button">
-                {authMode === "login" ? "Login" : "Register"}
-              </button>
-            </form>
-
-            <button
-              type="button"
-              className="auth-switch"
-              onClick={() => {
-                setAuthMode(authMode === "login" ? "register" : "login");
-                setAuthForm({
-                  name: "",
-                  email: authForm.email,
-                  password: "",
-                  phone: "",
-                });
-              }}
-            >
-              {authMode === "login"
-                ? "Don't have an account? Register"
-                : "Already have an account? Login"}
-            </button>
-          </>
-        )}
-      </section>
-
-      {/* Pets */}
       <section
         className="pets-section"
-        id={showFavorites ? "favorites" : "pets"}
+        id="pets"
       >
+
         <div className="section-heading">
-          <div>
-            <p className="eyebrow">
-              {showFavorites ? "YOUR FAVORITES" : "MEET YOUR MATCH"}
-            </p>
 
-            <h2>
-              {showFavorites ? "Pets you've saved" : "Pets looking for a home"}
-            </h2>
-          </div>
+          <h2>
+            Pets looking for homes
+          </h2>
 
-          {!showFavorites && (
-            <div className="filters">
-              {["All", "Dog", "Cat"].map((type) => (
+
+          <div className="filters">
+
+            {[
+              "All",
+              "Dog",
+              "Cat",
+            ].map(
+              (type) => (
+
                 <button
                   key={type}
-                  className={filter === type ? "active" : ""}
-                  onClick={() => setFilter(type)}
+                  className={
+                    filter === type
+                      ? "active"
+                      : ""
+                  }
+                  onClick={() =>
+                    setFilter(type)
+                  }
                 >
-                  {type === "All" ? "All Pets" : `${type}s`}
+                  {type}
                 </button>
-              ))}
+
+              ),
+            )}
+
+          </div>
+
+        </div>
+
+
+        {loading ? (
+
+          <div className="loading-state">
+
+            <div className="loading-paw">
+              🐾
             </div>
-          )}
-        </div>
 
-        <div className="pet-grid">
-          {(showFavorites ? favoritePets : filteredPets).map((pet) => (
-            <article className="pet-card" key={pet.id}>
-              <div className="pet-image-wrapper">
-                <img src={getPetImage(pet)} alt={pet.name} />
 
-                {pet.available_for_adoption && (
-                  <span className="available-badge">Available</span>
-                )}
-              </div>
+            <h3>
+              Finding pets...
+            </h3>
 
-              <div className="pet-info">
-                <div>
-                  <h3>{pet.name}</h3>
-                  <p>
-                    {pet.animal_type} · {pet.age}{" "}
-                    {pet.age === 1 ? "year" : "years"} old
-                  </p>
-                </div>
-
-                {user && pet.owner_id !== user.id && (
-                  <button
-                    className="favorite-button"
-                    onClick={() => handleFavorite(pet.id)}
-                    title={
-                      favorites.includes(pet.id)
-                        ? "Remove from favorites"
-                        : "Add to favorites"
-                    }
-                  >
-                    {favorites.includes(pet.id) ? "❤️" : "♡"}
-                  </button>
-                )}
-
-                <div className="pet-card-actions">
-                  <button
-                    className="view-button"
-                    onClick={() => setSelectedPet(pet)}
-                  >
-                    View Details →
-                  </button>
-
-                  {user &&
-                    pet.available_for_adoption &&
-                    pet.owner_id !== user.id && (
-                      <button
-                        className="adopt-button"
-                        onClick={() => handleAdoptPet(pet.id)}
-                      >
-                        Adopt ❤️
-                      </button>
-                    )}
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {(showFavorites ? favoritePets : filteredPets).length === 0 && (
-          <div className="empty-state">
-            <span>{showFavorites ? "❤️" : "🐾"}</span>
-
-            <h3>{showFavorites ? "No favorite pets yet" : "No pets found"}</h3>
 
             <p>
-              {showFavorites
-                ? "Tap the heart on a pet to save it here."
-                : "Try searching for another name."}
+              Please wait while we
+              load the latest listings.
             </p>
 
-            {showFavorites && (
-              <button
-                className="cta-button"
-                onClick={() => setShowFavorites(false)}
-              >
-                Find a Pet
-              </button>
-            )}
           </div>
-        )}
-        {selectedPet && (
-          <div className="pet-details">
-            <div className="pet-details-image">
-              <img src={getPetImage(selectedPet)} alt={selectedPet.name} />
+
+        ) : error ? (
+
+          <div className="error-state">
+
+            <div className="error-icon">
+              ⚠️
             </div>
 
-            <div className="pet-details-content">
-              <button
-                className="close-details"
-                onClick={() => setSelectedPet(null)}
-              >
-                ×
-              </button>
 
-              <p className="eyebrow">PET DETAILS</p>
+            <h3>
+              Couldn't load pets
+            </h3>
 
-              <h2>{selectedPet.name}</h2>
 
-              <p className="details-type">
-                {selectedPet.animal_type} · {selectedPet.age}{" "}
-                {selectedPet.age === 1 ? "year" : "years"} old
-              </p>
+            <p>
+              {error}
+            </p>
 
-              <span className="details-status">
-                {selectedPet.available_for_adoption
-                  ? "✓ Available for adoption"
-                  : "Currently unavailable"}
+
+            <button
+              className="retry-button"
+              onClick={fetchPets}
+            >
+              Try Again
+            </button>
+
+          </div>
+
+        ) : filteredPets.length ===
+          0 ? (
+
+          <div className="empty-state">
+
+            <span>
+              🐾
+            </span>
+
+
+            <h3>
+              No pets found
+            </h3>
+
+
+            <p>
+              Try another search or
+              filter.
+            </p>
+
+          </div>
+
+        ) : (
+
+          <div className="pet-grid">
+
+            {filteredPets.map(
+              (pet) => {
+
+                const isOwner =
+                  user?.id ===
+                  pet.owner_id;
+
+
+                const pendingRequest =
+                  myRequests.some(
+                    (request) =>
+                      request.pet_id ===
+                        pet.id &&
+                      request.status ===
+                        "Pending",
+                  );
+
+
+                return (
+
+                  <div
+                    className="pet-card"
+                    key={pet.id}
+                  >
+
+                    <div className="pet-image-wrapper">
+
+                      <img
+                        src={
+                          getPetImage(
+                            pet,
+                          )
+                        }
+                        alt={
+                          pet.name
+                        }
+                      />
+
+
+                      {pet.available_for_adoption && (
+
+                        <span className="available-badge">
+                          Available
+                        </span>
+
+                      )}
+
+                    </div>
+
+
+                    <div className="pet-info">
+
+                      <div className="pet-main-info">
+
+                        <h3>
+                          {pet.name}
+                        </h3>
+
+
+                        <p>
+
+                          {
+                            pet.animal_type
+                          }
+
+                          {" "}
+
+                          •
+
+                          {" "}
+
+                          {
+                            pet.age
+                          }
+
+                          {" "}
+
+                          {pet.age === 1
+                            ? "year"
+                            : "years"}
+
+                        </p>
+
+                      </div>
+
+
+                      {user && (
+
+                        <button
+                          className="favorite-button"
+                          onClick={() =>
+                            toggleFavorite(
+                              pet.id,
+                            )
+                          }
+                          aria-label="Favorite pet"
+                        >
+
+                          {favorites.includes(
+                            pet.id,
+                          )
+                            ? "❤️"
+                            : "♡"}
+
+                        </button>
+
+                      )}
+
+
+                      <div className="pet-card-actions">
+
+                        <button
+                          className="view-button"
+                          onClick={() =>
+                            setSelectedPet(
+                              pet,
+                            )
+                          }
+                        >
+                          View Details
+                        </button>
+
+
+                        <button
+                          className="share-button"
+                          onClick={() =>
+                            sharePet(
+                              pet,
+                            )
+                          }
+                        >
+                          Share
+                        </button>
+
+                      </div>
+
+
+                      {pet.available_for_adoption &&
+                        user &&
+                        !isOwner && (
+
+                          <button
+                            className="adopt-button"
+                            onClick={() =>
+                              openAdoptionRequest(
+                                pet,
+                              )
+                            }
+                          >
+
+                            {pendingRequest
+                              ? "Request Pending"
+                              : "Request Adoption"}
+
+                          </button>
+
+                        )}
+
+                    </div>
+
+                  </div>
+
+                );
+
+              },
+            )}
+
+          </div>
+
+        )}
+
+      </section>
+
+
+      {/* FAVORITES */}
+
+      {user && (
+
+        <section
+          className="pets-section"
+          id="favorites"
+        >
+
+          <div className="section-heading">
+
+            <h2>
+              My Favorites
+            </h2>
+
+          </div>
+
+
+          {favoritePets.length === 0 ? (
+
+            <div className="empty-state">
+
+              <span>
+                ♡
               </span>
 
-              <p className="details-description">
-                Meet {selectedPet.name}, a lovely{" "}
-                {selectedPet.animal_type.toLowerCase()} looking for a caring
-                family and a loving home.
+
+              <h3>
+                No favorites yet
+              </h3>
+
+
+              <p>
+                Save pets you love
+                and find them here
+                anytime.
               </p>
 
-              <div className="details-actions">
-                <button
-                  className="share-button"
-                  onClick={() => handleSharePet(selectedPet)}
-                >
-                  Share ↗
-                </button>
 
-                {user &&
-                  selectedPet.available_for_adoption &&
-                  selectedPet.owner_id !== user.id && (
-                    <button
-                      className="adopt-button"
-                      onClick={() => handleAdoptPet(selectedPet.id)}
-                    >
-                      Adopt {selectedPet.name} ❤️
-                    </button>
-                  )}
-
-                {user && selectedPet.owner_id === user.id && (
-                  <>
-                    <button
-                      className="edit-button"
-                      onClick={() => {
-                        setEditPet({ ...selectedPet });
-                        setSelectedPet(null);
-                      }}
-                    >
-                      Edit Pet
-                    </button>
-
-                    <button
-                      className="delete-button"
-                      onClick={() => handleDeletePet(selectedPet.id)}
-                    >
-                      Delete Pet
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {editPet && (
-          <div className="pet-details">
-            <div className="pet-details-image">
-              <img src={getPetImage(editPet)} alt={editPet.name} />
-            </div>
-
-            <div className="pet-details-content">
-              <button
-                className="close-details"
-                onClick={() => setEditPet(null)}
+              <a
+                href="#pets"
+                className="cta-button"
               >
-                ×
+                Find a Pet
+              </a>
+
+            </div>
+
+          ) : (
+
+            <div className="pet-grid">
+
+              {favoritePets.map(
+                (pet) => (
+
+                  <div
+                    className="pet-card"
+                    key={pet.id}
+                  >
+
+                    <div className="pet-image-wrapper">
+
+                      <img
+                        src={
+                          getPetImage(
+                            pet,
+                          )
+                        }
+                        alt={
+                          pet.name
+                        }
+                      />
+
+                    </div>
+
+
+                    <div className="pet-info">
+
+                      <div className="pet-main-info">
+
+                        <h3>
+                          {pet.name}
+                        </h3>
+
+
+                        <p>
+
+                          {
+                            pet.animal_type
+                          }
+
+                          {" "}
+
+                          •
+
+                          {" "}
+
+                          {
+                            pet.age
+                          }
+
+                          {" "}
+
+                          {pet.age === 1
+                            ? "year"
+                            : "years"}
+
+                        </p>
+
+                      </div>
+
+
+                      <button
+                        className="favorite-button"
+                        onClick={() =>
+                          toggleFavorite(
+                            pet.id,
+                          )
+                        }
+                        aria-label="Remove from favorites"
+                      >
+                        ❤️
+                      </button>
+
+
+                      <div className="pet-card-actions">
+
+                        <button
+                          className="view-button"
+                          onClick={() =>
+                            setSelectedPet(
+                              pet,
+                            )
+                          }
+                        >
+                          View Details
+                        </button>
+
+
+                        <button
+                          className="share-button"
+                          onClick={() =>
+                            sharePet(
+                              pet,
+                            )
+                          }
+                        >
+                          Share
+                        </button>
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                ),
+              )}
+
+            </div>
+
+          )}
+
+        </section>
+
+      )}
+
+
+      {/* MY PETS */}
+
+      {user && (
+
+        <section
+          className="pets-section"
+          id="my-pets"
+        >
+
+          <div className="section-heading">
+
+            <h2>
+              My Pets
+            </h2>
+
+          </div>
+
+
+          {myPets.length === 0 ? (
+
+            <div className="empty-state">
+
+              <span>
+                🐾
+              </span>
+
+
+              <h3>
+                You haven't added
+                any pets yet
+              </h3>
+
+
+              <p>
+                Add a pet to start
+                receiving adoption
+                requests.
+              </p>
+
+
+              <button
+                className="cta-button"
+                onClick={() => {
+
+                  setShowAddForm(
+                    true,
+                  );
+
+
+                  setTimeout(() => {
+
+                    document
+                      .getElementById(
+                        "add-pet-form",
+                      )
+                      ?.scrollIntoView({
+
+                        behavior:
+                          "smooth",
+
+                      });
+
+                  }, 50);
+
+                }}
+              >
+                Add a Pet
               </button>
 
-              <p className="eyebrow">EDIT PET</p>
+            </div>
 
-              <div className="edit-form">
-                <h2>Edit {editPet.name}</h2>
+          ) : (
+
+            <div className="pet-grid">
+
+              {myPets.map(
+                (pet) => (
+
+                  <div
+                    className="pet-card"
+                    key={pet.id}
+                  >
+
+                    <div className="pet-image-wrapper">
+
+                      <img
+                        src={
+                          getPetImage(
+                            pet,
+                          )
+                        }
+                        alt={
+                          pet.name
+                        }
+                      />
+
+
+                      <span className="available-badge">
+
+                        {pet.available_for_adoption
+                          ? "Available"
+                          : "Adopted"}
+
+                      </span>
+
+                    </div>
+
+
+                    <div className="pet-info">
+
+                      <div className="pet-main-info">
+
+                        <h3>
+                          {pet.name}
+                        </h3>
+
+
+                        <p>
+
+                          {
+                            pet.animal_type
+                          }
+
+                          {" "}
+
+                          •
+
+                          {" "}
+
+                          {
+                            pet.age
+                          }
+
+                          {" "}
+
+                          {pet.age === 1
+                            ? "year"
+                            : "years"}
+
+                        </p>
+
+                      </div>
+
+
+                      <div className="pet-card-actions">
+
+                        <button
+                          className="view-button"
+                          onClick={() =>
+                            setSelectedPet(
+                              pet,
+                            )
+                          }
+                        >
+                          View
+                        </button>
+
+
+                        {pet.available_for_adoption && (
+
+                          <>
+
+                            <button
+                              className="edit-button"
+                              onClick={() =>
+                                startEditing(
+                                  pet,
+                                )
+                              }
+                            >
+                              Edit
+                            </button>
+
+
+                            <button
+                              className="delete-button"
+                              onClick={() =>
+                                deletePet(
+                                  pet.id,
+                                )
+                              }
+                            >
+                              Delete
+                            </button>
+
+                          </>
+
+                        )}
+
+                      </div>
+
+                    </div>
+
+                  </div>
+
+                ),
+              )}
+
+            </div>
+
+          )}
+
+        </section>
+
+      )}
+
+
+      {/* CTA */}
+
+      {user && (
+
+        <section className="cta-section">
+
+          <div>
+
+            <p className="eyebrow">
+              HELP A PET FIND HOME
+            </p>
+
+
+            <h2>
+              Have a pet looking
+              for a family?
+            </h2>
+
+
+            <p>
+              Create a listing and
+              connect directly with
+              potential adopters.
+            </p>
+
+          </div>
+
+
+          <button
+            className="cta-button"
+            onClick={() => {
+
+              setShowAddForm(
+                true,
+              );
+
+
+              setTimeout(() => {
+
+                document
+                  .getElementById(
+                    "add-pet-form",
+                  )
+                  ?.scrollIntoView({
+
+                    behavior:
+                      "smooth",
+
+                  });
+
+              }, 50);
+
+            }}
+          >
+            Add a Pet
+          </button>
+
+        </section>
+
+      )}
+
+
+      {/* ADD PET */}
+
+      {user &&
+        showAddForm && (
+
+          <section
+            className="add-form"
+            id="add-pet-form"
+          >
+
+            <h2>
+              Add a Pet
+            </h2>
+
+
+            <form
+              onSubmit={
+                handleAddPet
+              }
+            >
+
+              <label>
+
+                Pet Name
+
 
                 <input
-                  type="text"
-                  value={editPet.name}
-                  onChange={(e) =>
-                    setEditPet({
-                      ...editPet,
-                      name: e.target.value,
+                  required
+                  value={
+                    petForm.name
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setPetForm({
+
+                      ...petForm,
+
+                      name:
+                        event.target
+                          .value,
+
                     })
                   }
-                  placeholder="Pet name"
                 />
 
+              </label>
+
+
+              <label>
+
+                Animal Type
+
+
                 <select
-                  value={editPet.animal_type}
-                  onChange={(e) =>
-                    setEditPet({
-                      ...editPet,
-                      animal_type: e.target.value,
+                  value={
+                    petForm.animal_type
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setPetForm({
+
+                      ...petForm,
+
+                      animal_type:
+                        event.target
+                          .value,
+
                     })
                   }
                 >
-                  <option value="Dog">Dog</option>
-                  <option value="Cat">Cat</option>
+
+                  <option value="Dog">
+                    Dog
+                  </option>
+
+
+                  <option value="Cat">
+                    Cat
+                  </option>
+
                 </select>
 
+              </label>
+
+
+              <label>
+
+                Age
+
+
                 <input
+                  required
                   type="number"
                   min="0"
-                  value={editPet.age}
-                  onChange={(e) =>
-                    setEditPet({
-                      ...editPet,
-                      age: Number(e.target.value),
+                  value={
+                    petForm.age
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setPetForm({
+
+                      ...petForm,
+
+                      age:
+                        event.target
+                          .value,
+
                     })
                   }
-                  placeholder="Age"
                 />
 
-                <label>
-                  <input
-                    type="checkbox"
-                    checked={editPet.available_for_adoption}
-                    onChange={(e) =>
-                      setEditPet({
-                        ...editPet,
-                        available_for_adoption: e.target.checked,
-                      })
-                    }
-                  />
-                  Available for adoption
-                </label>
+              </label>
+
+
+              <label className="checkbox-label">
+
+                <input
+                  type="checkbox"
+                  checked={
+                    petForm.available_for_adoption
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setPetForm({
+
+                      ...petForm,
+
+                      available_for_adoption:
+                        event.target
+                          .checked,
+
+                    })
+                  }
+                />
+
+
+                Available for adoption
+
+              </label>
+
+
+              <button
+                className="cta-button"
+                type="submit"
+              >
+                Add Pet
+              </button>
+
+            </form>
+
+          </section>
+
+        )}
+
+
+      {/* AUTH */}
+
+      {showAuth && (
+
+        <div className="pet-details">
+
+          <div className="pet-details-content">
+
+            <button
+              className="close-details"
+              onClick={() =>
+                setShowAuth(
+                  false,
+                )
+              }
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+
+            <p className="eyebrow">
+              PAWCONNECT
+            </p>
+
+
+            <h2>
+
+              {authMode ===
+              "login"
+                ? "Welcome back"
+                : "Create an account"}
+
+            </h2>
+
+
+            <p className="details-description">
+
+              {authMode ===
+              "login"
+                ? "Log in to manage your pets, favorites and adoption requests."
+                : "Create your PawConnect account to list pets and connect with adopters."}
+
+            </p>
+
+
+            {authMessage && (
+
+              <p
+                style={{
+
+                  padding:
+                    "12px 14px",
+
+                  borderRadius:
+                    "10px",
+
+                  background:
+                    "#edf7ed",
+
+                  color:
+                    "#2d6a3f",
+
+                  marginBottom:
+                    "15px",
+
+                }}
+              >
+
+                {authMessage}
+
+              </p>
+
+            )}
+
+
+            {authError && (
+
+              <p
+                style={{
+
+                  padding:
+                    "12px 14px",
+
+                  borderRadius:
+                    "10px",
+
+                  background:
+                    "#fff0ee",
+
+                  color:
+                    "#a33a2b",
+
+                  marginBottom:
+                    "15px",
+
+                }}
+              >
+
+                {authError}
+
+              </p>
+
+            )}
+
+
+            <form
+              className="auth-form"
+              onSubmit={
+                handleAuthSubmit
+              }
+            >
+
+              {authMode ===
+                "register" && (
+
+                <>
+
+                  <label>
+
+                    Name
+
+
+                    <input
+                      required
+                      minLength="2"
+                      value={
+                        authForm.name
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setAuthForm({
+
+                          ...authForm,
+
+                          name:
+                            event
+                              .target
+                              .value,
+
+                        })
+                      }
+                    />
+
+                  </label>
+
+
+                  <label>
+
+                    Phone
+
+
+                    <input
+                      type="tel"
+                      value={
+                        authForm.phone
+                      }
+                      onChange={(
+                        event,
+                      ) =>
+                        setAuthForm({
+
+                          ...authForm,
+
+                          phone:
+                            event
+                              .target
+                              .value,
+
+                        })
+                      }
+                    />
+
+                  </label>
+
+                </>
+
+              )}
+
+
+              <label>
+
+                Email
+
+
+                <input
+                  required
+                  type="email"
+                  value={
+                    authForm.email
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setAuthForm({
+
+                      ...authForm,
+
+                      email:
+                        event.target
+                          .value,
+
+                    })
+                  }
+                />
+
+              </label>
+
+
+              <label>
+
+                Password
+
+
+                <input
+                  required
+                  minLength="8"
+                  type="password"
+                  value={
+                    authForm.password
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setAuthForm({
+
+                      ...authForm,
+
+                      password:
+                        event.target
+                          .value,
+
+                    })
+                  }
+                />
+
+              </label>
+
+
+              <button
+                className="cta-button"
+                type="submit"
+                disabled={
+                  authLoading
+                }
+              >
+
+                {authLoading
+                  ? "Please wait..."
+                  : authMode ===
+                    "login"
+                  ? "Log in"
+                  : "Create Account"}
+
+              </button>
+
+            </form>
+
+
+            {authMode ===
+              "login" && (
+
+              <>
 
                 <button
                   type="button"
-                  className="cta-button"
-                  onClick={handleUpdatePet}
-                >
-                  Save Changes
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </section>
+                  onClick={
+                    handleGoogleLogin
+                  }
+                  disabled={
+                    authLoading
+                  }
+                  style={{
 
-      {/* Call to action */}
-      <section className="cta-section" id="add">
-        <div>
-          <p className="eyebrow">HELP A PET FIND HOME</p>
-          <h2>Have a pet that needs a loving family?</h2>
-          <p>Add them to PawConnect and help them find their perfect match.</p>
+                    width:
+                      "100%",
+
+                    marginTop:
+                      "12px",
+
+                    padding:
+                      "13px 16px",
+
+                    border:
+                      "1px solid #deded7",
+
+                    borderRadius:
+                      "10px",
+
+                    background:
+                      "#ffffff",
+
+                    cursor:
+                      authLoading
+                        ? "default"
+                        : "pointer",
+
+                    fontWeight:
+                      "600",
+
+                    fontSize:
+                      "15px",
+
+                  }}
+                >
+
+                  {authLoading
+                    ? "Connecting..."
+                    : "Continue with Google"}
+
+                </button>
+
+
+                <button
+                  type="button"
+                  className="auth-switch"
+                  onClick={() => {
+
+                    setShowForgotPassword(
+                      true,
+                    );
+
+                    setForgotEmail(
+                      authForm.email,
+                    );
+
+                    setAuthError(
+                      "",
+                    );
+
+                    setAuthMessage(
+                      "",
+                    );
+
+                  }}
+                >
+                  Forgot password?
+                </button>
+
+              </>
+
+            )}
+
+
+            <button
+              className="auth-switch"
+              onClick={() => {
+
+                setAuthMode(
+
+                  authMode ===
+                  "login"
+                    ? "register"
+                    : "login",
+
+                );
+
+
+                setAuthError(
+                  "",
+                );
+
+                setAuthMessage(
+                  "",
+                );
+
+              }}
+            >
+
+              {authMode ===
+              "login"
+                ? "Don't have an account? Register"
+                : "Already have an account? Log in"}
+
+            </button>
+
+          </div>
+
         </div>
 
-        <button
-          className="cta-button"
-          onClick={() => {
-            if (!user) {
-              alert("Please log in to add a pet.");
-              return;
-            }
-
-            setShowAddForm(!showAddForm);
-          }}
-        >
-          {showAddForm ? "× Close Form" : "+ Add a Pet"}
-        </button>
-      </section>
-
-      {showAddForm && (
-        <form className="add-form" id="add-form" onSubmit={handleAddPet}>
-          <h2>Add a Pet</h2>
-
-          <label>
-            Pet Name
-            <input
-              type="text"
-              value={newPet.name}
-              onChange={(e) => setNewPet({ ...newPet, name: e.target.value })}
-              placeholder="Enter pet name"
-            />
-          </label>
-
-          <label>
-            Animal Type
-            <select
-              value={newPet.animal_type}
-              onChange={(e) =>
-                setNewPet({ ...newPet, animal_type: e.target.value })
-              }
-            >
-              <option value="Dog">Dog</option>
-              <option value="Cat">Cat</option>
-            </select>
-          </label>
-
-          <label>
-            Age
-            <input
-              type="number"
-              min="0"
-              value={newPet.age}
-              onChange={(e) => setNewPet({ ...newPet, age: e.target.value })}
-              placeholder="Enter age"
-            />
-          </label>
-
-          <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={newPet.available_for_adoption}
-              onChange={(e) =>
-                setNewPet({
-                  ...newPet,
-                  available_for_adoption: e.target.checked,
-                })
-              }
-            />
-            Available for adoption
-          </label>
-
-          <button type="submit" className="cta-button">
-            Add Pet
-          </button>
-        </form>
       )}
 
-      {/* Footer */}
-      <footer id="about">
-        <div className="logo">
-          <span className="logo-icon">🐾</span>
-          <span>PawConnect</span>
+
+      {/* FORGOT PASSWORD */}
+
+      {showForgotPassword && (
+
+        <div className="pet-details">
+
+          <div className="pet-details-content">
+
+            <button
+              className="close-details"
+              onClick={() =>
+                setShowForgotPassword(
+                  false,
+                )
+              }
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+
+            <p className="eyebrow">
+              PAWCONNECT
+            </p>
+
+
+            <h2>
+              Reset your password
+            </h2>
+
+
+            <p className="details-description">
+
+              Enter your email and
+              we'll send you a
+              password reset link.
+
+            </p>
+
+
+            {authMessage && (
+
+              <p
+                style={{
+
+                  padding:
+                    "12px 14px",
+
+                  borderRadius:
+                    "10px",
+
+                  background:
+                    "#edf7ed",
+
+                  color:
+                    "#2d6a3f",
+
+                  marginBottom:
+                    "15px",
+
+                }}
+              >
+
+                {authMessage}
+
+              </p>
+
+            )}
+
+
+            {authError && (
+
+              <p
+                style={{
+
+                  padding:
+                    "12px 14px",
+
+                  borderRadius:
+                    "10px",
+
+                  background:
+                    "#fff0ee",
+
+                  color:
+                    "#a33a2b",
+
+                  marginBottom:
+                    "15px",
+
+                }}
+              >
+
+                {authError}
+
+              </p>
+
+            )}
+
+
+            <form
+              className="auth-form"
+              onSubmit={
+                handleForgotPassword
+              }
+            >
+
+              <label>
+
+                Email
+
+
+                <input
+                  required
+                  type="email"
+                  value={
+                    forgotEmail
+                  }
+                  onChange={(
+                    event,
+                  ) => {
+
+                    setForgotEmail(
+                      event.target
+                        .value,
+                    );
+
+                    setAuthError(
+                      "",
+                    );
+
+                  }}
+                />
+
+              </label>
+
+
+              <button
+                className="cta-button"
+                type="submit"
+                disabled={
+                  forgotLoading
+                }
+              >
+
+                {forgotLoading
+                  ? "Sending..."
+                  : "Send Reset Link"}
+
+              </button>
+
+            </form>
+
+
+            <button
+              className="auth-switch"
+              onClick={() => {
+
+                setShowForgotPassword(
+                  false,
+                );
+
+                setShowAuth(
+                  true,
+                );
+
+                setAuthMode(
+                  "login",
+                );
+
+                setAuthError(
+                  "",
+                );
+
+                setAuthMessage(
+                  "",
+                );
+
+              }}
+            >
+              Back to login
+            </button>
+
+          </div>
+
         </div>
 
-        <p>Connecting pets with the people who will love them.</p>
+      )}
 
-        <span>© 2026 PawConnect</span>
+
+      {/* RESET PASSWORD */}
+
+      {showResetPassword && (
+
+        <div className="pet-details">
+
+          <div className="pet-details-content">
+
+            <p className="eyebrow">
+              PAWCONNECT
+            </p>
+
+
+            <h2>
+              Choose a new password
+            </h2>
+
+
+            <p className="details-description">
+
+              Enter your new
+              password below.
+
+            </p>
+
+
+            {authMessage && (
+
+              <p
+                style={{
+
+                  padding:
+                    "12px 14px",
+
+                  borderRadius:
+                    "10px",
+
+                  background:
+                    "#edf7ed",
+
+                  color:
+                    "#2d6a3f",
+
+                  marginBottom:
+                    "15px",
+
+                }}
+              >
+
+                {authMessage}
+
+              </p>
+
+            )}
+
+
+            {authError && (
+
+              <p
+                style={{
+
+                  padding:
+                    "12px 14px",
+
+                  borderRadius:
+                    "10px",
+
+                  background:
+                    "#fff0ee",
+
+                  color:
+                    "#a33a2b",
+
+                  marginBottom:
+                    "15px",
+
+                }}
+              >
+
+                {authError}
+
+              </p>
+
+            )}
+
+
+            <form
+              className="auth-form"
+              onSubmit={
+                handleResetPassword
+              }
+            >
+
+              <label>
+
+                New Password
+
+
+                <input
+                  required
+                  minLength="8"
+                  type="password"
+                  value={
+                    newPassword
+                  }
+                  onChange={(
+                    event,
+                  ) => {
+
+                    setNewPassword(
+                      event.target
+                        .value,
+                    );
+
+                    setAuthError(
+                      "",
+                    );
+
+                  }}
+                />
+
+              </label>
+
+
+              <label>
+
+                Confirm Password
+
+
+                <input
+                  required
+                  minLength="8"
+                  type="password"
+                  value={
+                    confirmNewPassword
+                  }
+                  onChange={(
+                    event,
+                  ) => {
+
+                    setConfirmNewPassword(
+                      event.target
+                        .value,
+                    );
+
+                    setAuthError(
+                      "",
+                    );
+
+                  }}
+                />
+
+              </label>
+
+
+              <button
+                className="cta-button"
+                type="submit"
+                disabled={
+                  resetLoading
+                }
+              >
+
+                {resetLoading
+                  ? "Updating..."
+                  : "Update Password"}
+
+              </button>
+
+            </form>
+
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* DELETE ACCOUNT MODAL */}
+
+      {showDeleteAccount && (
+
+        <div className="pet-details">
+
+          <div className="pet-details-content">
+
+            <button
+              className="close-details"
+              onClick={() =>
+                setShowDeleteAccount(
+                  false,
+                )
+              }
+              aria-label="Close"
+              disabled={
+                deleteLoading
+              }
+            >
+              ×
+            </button>
+
+
+            <p className="eyebrow">
+              ACCOUNT SETTINGS
+            </p>
+
+
+            <h2>
+              Delete your account?
+            </h2>
+
+
+            <p className="details-description">
+
+              This will permanently
+              delete your PawConnect
+              account and associated
+              account data.
+
+            </p>
+
+
+            <p className="details-description">
+
+              This action cannot be
+              undone.
+
+            </p>
+
+
+            <div className="details-actions">
+
+              <button
+                className="delete-button"
+                onClick={
+                  handleDeleteAccount
+                }
+                disabled={
+                  deleteLoading
+                }
+              >
+
+                {deleteLoading
+                  ? "Deleting..."
+                  : "Yes, Delete Account"}
+
+              </button>
+
+
+              <button
+                className="share-button"
+                onClick={() =>
+                  setShowDeleteAccount(
+                    false,
+                  )
+                }
+                disabled={
+                  deleteLoading
+                }
+              >
+                Cancel
+              </button>
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* ADOPTION REQUEST MODAL */}
+
+      {requestPet && (
+
+        <div className="pet-details">
+
+          <div className="pet-details-content">
+
+            <button
+              className="close-details"
+              onClick={() =>
+                setRequestPet(
+                  null,
+                )
+              }
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+
+            <p className="eyebrow">
+              ADOPTION REQUEST
+            </p>
+
+
+            <h2>
+
+              Request{" "}
+
+              {requestPet.name}
+
+            </h2>
+
+
+            <p className="details-description">
+
+              Your request will be
+              sent to the owner. They
+              can review your contact
+              details, contact you
+              directly, and then
+              accept or reject the
+              request.
+
+            </p>
+
+
+            <form
+              className="auth-form"
+              onSubmit={
+                submitAdoptionRequest
+              }
+            >
+
+              <label>
+
+                Message to the owner
+
+
+                <textarea
+                  rows="6"
+                  value={
+                    requestMessage
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setRequestMessage(
+                      event.target
+                        .value,
+                    )
+                  }
+                  placeholder="Tell the owner a little about yourself and why you would like to adopt this pet..."
+                  style={{
+
+                    width:
+                      "100%",
+
+                    padding:
+                      "13px 14px",
+
+                    border:
+                      "1px solid #deded7",
+
+                    borderRadius:
+                      "10px",
+
+                    outline:
+                      "none",
+
+                    background:
+                      "#fafaf7",
+
+                    resize:
+                      "vertical",
+
+                  }}
+                />
+
+              </label>
+
+
+              <button
+                className="cta-button"
+                type="submit"
+              >
+                Send Adoption Request
+              </button>
+
+            </form>
+
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* REQUESTS MODAL */}
+
+      {showRequests &&
+        user && (
+
+          <div className="pet-details">
+
+            <div
+              className="pet-details-content"
+              style={{
+
+                width:
+                  "min(900px, 100%)",
+
+              }}
+            >
+
+              <button
+                className="close-details"
+                onClick={() =>
+                  setShowRequests(
+                    false,
+                  )
+                }
+                aria-label="Close"
+              >
+                ×
+              </button>
+
+
+              <p className="eyebrow">
+                ADOPTION REQUESTS
+              </p>
+
+
+              <h2>
+                Requests
+              </h2>
+
+
+              <h3
+                style={{
+
+                  marginTop:
+                    "30px",
+
+                }}
+              >
+                Received for my pets
+              </h3>
+
+
+              {receivedRequests.length ===
+              0 ? (
+
+                <p className="details-description">
+
+                  No adoption
+                  requests yet.
+
+                </p>
+
+              ) : (
+
+                receivedRequests.map(
+                  (request) => (
+
+                    <div
+                      key={
+                        request.id
+                      }
+                      style={{
+
+                        padding:
+                          "18px 0",
+
+                        borderBottom:
+                          "1px solid #e7e6df",
+
+                      }}
+                    >
+
+                      <strong>
+
+                        {
+                          request.pet_name
+                        }
+
+                      </strong>
+
+
+                      <p>
+
+                        Request from{" "}
+
+                        <strong>
+
+                          {
+                            request.requester_name
+                          }
+
+                        </strong>
+
+                      </p>
+
+
+                      <p>
+
+                        Email:{" "}
+
+                        {
+                          request.requester_email
+                        }
+
+                      </p>
+
+
+                      {request.requester_phone && (
+
+                        <p>
+
+                          Phone:{" "}
+
+                          {
+                            request.requester_phone
+                          }
+
+                        </p>
+
+                      )}
+
+
+                      {request.message && (
+
+                        <p>
+
+                          Message:{" "}
+
+                          {
+                            request.message
+                          }
+
+                        </p>
+
+                      )}
+
+
+                      <p>
+
+                        Status:{" "}
+
+                        <strong>
+
+                          {
+                            request.status
+                          }
+
+                        </strong>
+
+                      </p>
+
+
+                      {request.status ===
+                        "Pending" && (
+
+                        <div className="details-actions">
+
+                          <button
+                            className="adopt-button"
+                            onClick={() =>
+                              decideRequest(
+                                request.id,
+                                "accepted",
+                              )
+                            }
+                          >
+                            Accept
+                          </button>
+
+
+                          <button
+                            className="delete-button"
+                            onClick={() =>
+                              decideRequest(
+                                request.id,
+                                "rejected",
+                              )
+                            }
+                          >
+                            Reject
+                          </button>
+
+                        </div>
+
+                      )}
+
+                    </div>
+
+                  ),
+                )
+
+              )}
+
+
+              <h3
+                style={{
+
+                  marginTop:
+                    "35px",
+
+                }}
+              >
+                My requests
+              </h3>
+
+
+              {myRequests.length ===
+              0 ? (
+
+                <p className="details-description">
+
+                  You haven't sent
+                  any adoption
+                  requests.
+
+                </p>
+
+              ) : (
+
+                myRequests.map(
+                  (request) => (
+
+                    <div
+                      key={
+                        request.id
+                      }
+                      style={{
+
+                        padding:
+                          "18px 0",
+
+                        borderBottom:
+                          "1px solid #e7e6df",
+
+                      }}
+                    >
+
+                      <strong>
+
+                        {
+                          request.pet_name
+                        }
+
+                      </strong>
+
+
+                      <p>
+
+                        Status:{" "}
+
+                        <strong>
+
+                          {
+                            request.status
+                          }
+
+                        </strong>
+
+                      </p>
+
+
+                      {request.status ===
+                        "Accepted" && (
+
+                        <p>
+
+                          Your adoption
+                          request was
+                          accepted.
+
+                        </p>
+
+                      )}
+
+                    </div>
+
+                  ),
+                )
+
+              )}
+
+            </div>
+
+          </div>
+
+        )}
+
+
+      {/* PET DETAILS */}
+
+      {selectedPet && (
+
+        <div className="pet-details">
+
+          <div className="pet-details-image">
+
+            <img
+              src={
+                getPetImage(
+                  selectedPet,
+                )
+              }
+              alt={
+                selectedPet.name
+              }
+            />
+
+          </div>
+
+
+          <div className="pet-details-content">
+
+            <button
+              className="close-details"
+              onClick={() =>
+                setSelectedPet(
+                  null,
+                )
+              }
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+
+            <h2>
+              {selectedPet.name}
+            </h2>
+
+
+            <p className="details-type">
+
+              {
+                selectedPet.animal_type
+              }
+
+              {" "}
+
+              •
+
+              {" "}
+
+              {
+                selectedPet.age
+              }
+
+              {" "}
+
+              {selectedPet.age === 1
+                ? "year"
+                : "years"}
+
+            </p>
+
+
+            <span className="details-status">
+
+              {selectedPet.available_for_adoption
+                ? "Available for adoption"
+                : "Already adopted"}
+
+            </span>
+
+
+            <p className="details-description">
+
+              This pet is listed
+              on PawConnect by its
+              owner. Interested
+              adopters can send an
+              adoption request
+              directly to the owner.
+
+            </p>
+
+
+            <div className="details-actions">
+
+              {selectedPet.available_for_adoption &&
+                user &&
+                selectedPet.owner_id !==
+                  user.id && (
+
+                  <button
+                    className="adopt-button"
+                    onClick={() => {
+
+                      setSelectedPet(
+                        null,
+                      );
+
+
+                      openAdoptionRequest(
+                        selectedPet,
+                      );
+
+                    }}
+                  >
+                    Request Adoption
+                  </button>
+
+                )}
+
+
+              <button
+                className="share-button"
+                onClick={() =>
+                  sharePet(
+                    selectedPet,
+                  )
+                }
+              >
+                Share
+              </button>
+
+
+              {user?.id ===
+                selectedPet.owner_id &&
+                selectedPet.available_for_adoption && (
+
+                  <>
+
+                    <button
+                      className="edit-button"
+                      onClick={() =>
+                        startEditing(
+                          selectedPet,
+                        )
+                      }
+                    >
+                      Edit
+                    </button>
+
+
+                    <button
+                      className="delete-button"
+                      onClick={() =>
+                        deletePet(
+                          selectedPet.id,
+                        )
+                      }
+                    >
+                      Delete
+                    </button>
+
+                  </>
+
+                )}
+
+            </div>
+
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* EDIT PET */}
+
+      {editingPet && (
+
+        <div className="pet-details">
+
+          <div className="pet-details-content">
+
+            <button
+              className="close-details"
+              onClick={() =>
+                setEditingPet(
+                  null,
+                )
+              }
+              aria-label="Close"
+            >
+              ×
+            </button>
+
+
+            <form
+              className="edit-form"
+              onSubmit={
+                handleEditPet
+              }
+            >
+
+              <h2>
+                Edit Pet
+              </h2>
+
+
+              <label>
+
+                Pet Name
+
+
+                <input
+                  required
+                  value={
+                    editingPet.name
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setEditingPet({
+
+                      ...editingPet,
+
+                      name:
+                        event.target
+                          .value,
+
+                    })
+                  }
+                />
+
+              </label>
+
+
+              <label>
+
+                Animal Type
+
+
+                <select
+                  value={
+                    editingPet.animal_type
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setEditingPet({
+
+                      ...editingPet,
+
+                      animal_type:
+                        event.target
+                          .value,
+
+                    })
+                  }
+                >
+
+                  <option value="Dog">
+                    Dog
+                  </option>
+
+
+                  <option value="Cat">
+                    Cat
+                  </option>
+
+                </select>
+
+              </label>
+
+
+              <label>
+
+                Age
+
+
+                <input
+                  required
+                  min="0"
+                  type="number"
+                  value={
+                    editingPet.age
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setEditingPet({
+
+                      ...editingPet,
+
+                      age:
+                        event.target
+                          .value,
+
+                    })
+                  }
+                />
+
+              </label>
+
+
+              <label className="edit-checkbox">
+
+                <input
+                  type="checkbox"
+                  checked={
+                    editingPet.available_for_adoption
+                  }
+                  onChange={(
+                    event,
+                  ) =>
+                    setEditingPet({
+
+                      ...editingPet,
+
+                      available_for_adoption:
+                        event.target
+                          .checked,
+
+                    })
+                  }
+                />
+
+
+                <span>
+                  Available for adoption
+                </span>
+
+              </label>
+
+
+              <button
+                className="cta-button"
+                type="submit"
+              >
+                Save Changes
+              </button>
+
+            </form>
+
+          </div>
+
+        </div>
+
+      )}
+
+
+      {/* FOOTER */}
+
+      <footer>
+
+        <div className="logo">
+
+          <span className="logo-icon">
+            🐾
+          </span>
+
+          PawConnect
+
+        </div>
+
+
+        <span>
+          © 2026 PawConnect
+        </span>
+
       </footer>
+
     </div>
+
   );
+
 }
+
 
 export default App;

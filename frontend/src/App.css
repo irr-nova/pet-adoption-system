@@ -18,7 +18,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -44,11 +45,9 @@ button {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 32px;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   background: #f8f7f3;
 }
 
@@ -56,7 +55,6 @@ button {
   display: flex;
   align-items: center;
   gap: 9px;
-
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.5px;
@@ -77,7 +75,6 @@ button {
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-
   transition: color 0.2s ease;
 }
 
@@ -88,15 +85,11 @@ button {
 .nav-button {
   border: none;
   border-radius: 100px;
-
   padding: 11px 19px;
-
   background: #263c2e;
   color: white;
-
   font-size: 13px;
   font-weight: 600;
-
   transition:
     transform 0.2s ease,
     background 0.2s ease;
@@ -107,6 +100,18 @@ button {
   transform: translateY(-1px);
 }
 
+.user-menu {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.user-menu span {
+  color: #55554f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* ================================
    Hero
    ================================ */
@@ -114,14 +119,11 @@ button {
 .hero-section {
   max-width: 1200px;
   min-height: 500px;
-
   margin: 0 auto;
   padding: 80px 32px 90px;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   position: relative;
 }
 
@@ -133,9 +135,7 @@ button {
 
 .eyebrow {
   margin: 0 0 18px;
-
   color: #6c806d;
-
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.8px;
@@ -143,9 +143,7 @@ button {
 
 .hero-section h1 {
   margin: 0;
-
   color: #252522;
-
   font-size: clamp(48px, 6vw, 76px);
   line-height: 0.98;
   letter-spacing: -4px;
@@ -159,9 +157,7 @@ button {
 .hero-text {
   max-width: 540px;
   margin: 28px 0;
-
   color: #73736c;
-
   font-size: 16px;
   line-height: 1.7;
 }
@@ -173,19 +169,14 @@ button {
 .search-box {
   width: min(100%, 500px);
   height: 58px;
-
   display: flex;
   align-items: center;
   gap: 12px;
-
   padding: 0 20px;
-
   background: white;
   border: 1px solid #e4e3dd;
   border-radius: 14px;
-
   box-shadow: 0 8px 30px rgba(40, 40, 30, 0.06);
-
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -204,12 +195,9 @@ button {
 
 .search-box input {
   flex: 1;
-
   border: none;
   outline: none;
-
   background: transparent;
-
   color: #252522;
   font-size: 14px;
 }
@@ -219,13 +207,12 @@ button {
 }
 
 /* ================================
-   Hero decoration
+   Hero Decoration
    ================================ */
 
 .hero-decoration {
   width: 360px;
   height: 360px;
-
   position: relative;
   margin-right: 30px;
 }
@@ -233,36 +220,29 @@ button {
 .hero-circle {
   width: 310px;
   height: 310px;
-
   position: absolute;
   top: 20px;
   left: 20px;
-
   border-radius: 50%;
-
   background: #dfe8dc;
 }
 
 .hero-paw {
   position: absolute;
-
   top: 82px;
   left: 93px;
-
   font-size: 145px;
-
   transform: rotate(-15deg);
   filter: grayscale(1);
   opacity: 0.78;
 }
 
 /* ================================
-   Pets section
+   Pets Section
    ================================ */
 
 .pets-section {
   max-width: 1200px;
-
   margin: 0 auto;
   padding: 70px 32px 100px;
 }
@@ -271,15 +251,12 @@ button {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
-
   margin-bottom: 35px;
 }
 
 .section-heading h2 {
   margin: 0;
-
   color: #252522;
-
   font-size: 38px;
   line-height: 1.1;
   letter-spacing: -1.5px;
@@ -297,15 +274,11 @@ button {
 .filters button {
   border: 1px solid #deded7;
   border-radius: 100px;
-
   padding: 9px 16px;
-
   background: transparent;
   color: #77776f;
-
   font-size: 12px;
   font-weight: 600;
-
   transition: all 0.2s ease;
 }
 
@@ -321,7 +294,7 @@ button {
 }
 
 /* ================================
-   Pet cards
+   Pet Cards
    ================================ */
 
 .pet-grid {
@@ -332,14 +305,10 @@ button {
 
 .pet-card {
   overflow: hidden;
-
   background: white;
-
   border: 1px solid #e7e6df;
   border-radius: 18px;
-
   box-shadow: 0 5px 20px rgba(40, 40, 30, 0.04);
-
   transition:
     transform 0.25s ease,
     box-shadow 0.25s ease;
@@ -353,20 +322,15 @@ button {
 .pet-image-wrapper {
   height: 260px;
   position: relative;
-
   overflow: hidden;
-
   background: #e8e8e2;
 }
 
 .pet-image-wrapper img {
   width: 100%;
   height: 100%;
-
   display: block;
-
   object-fit: cover;
-
   transition: transform 0.4s ease;
 }
 
@@ -378,81 +342,73 @@ button {
   position: absolute;
   top: 14px;
   left: 14px;
-
   padding: 7px 11px;
-
   border-radius: 100px;
-
   background: rgba(255, 255, 255, 0.92);
   color: #38523d;
-
   font-size: 11px;
   font-weight: 700;
-
   backdrop-filter: blur(8px);
 }
 
 .pet-info {
-  min-height: 88px;
-
+  min-height: 118px;
   padding: 19px 19px 17px;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pet-main-info {
+  min-width: 0;
 }
 
 .pet-info h3 {
   margin: 0 0 5px;
-
   color: #292925;
-
   font-size: 21px;
   letter-spacing: -0.5px;
 }
 
 .pet-info p {
   margin: 0;
-
   color: #888880;
-
   font-size: 12px;
 }
 
-.view-button {
+.favorite-button {
   border: none;
   background: transparent;
-
-  color: #38523d;
-
-  font-size: 12px;
-  font-weight: 700;
-
-  transition: transform 0.2s ease;
+  font-size: 20px;
+  padding: 4px 8px;
 }
 
-.view-button:hover {
-  transform: translateX(3px);
+.favorite-button:hover {
+  transform: scale(1.08);
 }
 
-.favorite-button,
+.view-button,
 .share-button,
 .adopt-button,
 .edit-button,
 .delete-button {
   border: none;
   border-radius: 8px;
-
   padding: 8px 10px;
-
   font-size: 12px;
   font-weight: 600;
 }
 
-.favorite-button {
+.view-button {
   background: transparent;
-  font-size: 20px;
-  padding: 4px 8px;
+  color: #38523d;
+  transition: transform 0.2s ease;
+}
+
+.view-button:hover {
+  transform: translateX(3px);
 }
 
 .share-button {
@@ -463,6 +419,10 @@ button {
 .adopt-button {
   background: #263c2e;
   color: white;
+}
+
+.adopt-button:hover {
+  background: #1d3024;
 }
 
 .edit-button {
@@ -478,7 +438,8 @@ button {
 .pet-card-actions {
   display: flex;
   gap: 10px;
-  margin-top: 18px;
+  width: 100%;
+  margin-top: 4px;
 }
 
 .pet-card-actions .view-button,
@@ -494,14 +455,57 @@ button {
 }
 
 /* ================================
-   Empty state
+   Loading State
+   ================================ */
+
+.loading-state {
+  min-height: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  background: white;
+  border: 1px solid #e7e6df;
+  border-radius: 18px;
+}
+
+.loading-paw {
+  margin-bottom: 12px;
+  font-size: 42px;
+  animation: pawPulse 1.2s ease-in-out infinite;
+}
+
+.loading-state h3 {
+  margin: 0 0 8px;
+  color: #252522;
+  font-size: 20px;
+}
+
+.loading-state p {
+  margin: 0;
+  color: #888880;
+  font-size: 13px;
+}
+
+@keyframes pawPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.18);
+  }
+}
+
+/* ================================
+   Empty State
    ================================ */
 
 .empty-state {
   padding: 70px 20px;
-
   text-align: center;
-
   background: white;
   border: 1px solid #e7e6df;
   border-radius: 18px;
@@ -516,27 +520,23 @@ button {
 }
 
 .empty-state p {
-  margin: 0;
+  margin: 0 0 20px;
   color: #888880;
 }
 
 /* ================================
-   Call to action
+   Call To Action
    ================================ */
 
 .cta-section {
   max-width: 1136px;
-
   margin: 0 auto 70px;
   padding: 55px 60px;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 40px;
-
   border-radius: 24px;
-
   background: #263c2e;
   color: white;
 }
@@ -547,9 +547,7 @@ button {
 
 .cta-section h2 {
   max-width: 600px;
-
   margin: 0 0 12px;
-
   font-size: 34px;
   line-height: 1.15;
   letter-spacing: -1px;
@@ -557,26 +555,19 @@ button {
 
 .cta-section p:last-child {
   margin: 0;
-
   color: #c5cec5;
-
   font-size: 14px;
 }
 
 .cta-button {
   flex-shrink: 0;
-
   border: none;
   border-radius: 100px;
-
   padding: 14px 22px;
-
   background: white;
   color: #263c2e;
-
   font-size: 13px;
   font-weight: 700;
-
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease;
@@ -593,23 +584,17 @@ button {
 
 .add-form {
   max-width: 720px;
-
   margin: 0 auto 80px;
   padding: 38px;
-
   background: white;
-
   border: 1px solid #e7e6df;
   border-radius: 20px;
-
   box-shadow: 0 10px 30px rgba(40, 40, 30, 0.06);
 }
 
 .add-form h2 {
   margin: 0 0 28px;
-
   color: #252522;
-
   font-size: 28px;
   letter-spacing: -1px;
 }
@@ -618,11 +603,8 @@ button {
   display: flex;
   flex-direction: column;
   gap: 8px;
-
   margin-bottom: 18px;
-
   color: #55554f;
-
   font-size: 12px;
   font-weight: 600;
 }
@@ -630,19 +612,13 @@ button {
 .add-form input,
 .add-form select {
   width: 100%;
-
   padding: 13px 14px;
-
   border: 1px solid #deded7;
   border-radius: 10px;
-
   outline: none;
-
   background: #fafaf7;
   color: #252522;
-
   font-size: 14px;
-
   transition:
     border-color 0.2s ease,
     box-shadow 0.2s ease;
@@ -651,14 +627,12 @@ button {
 .add-form input:focus,
 .add-form select:focus {
   border-color: #9aaa9b;
-
   box-shadow: 0 0 0 3px rgba(108, 128, 109, 0.1);
 }
 
 .checkbox-label {
   flex-direction: row !important;
   align-items: center;
-
   gap: 10px !important;
 }
 
@@ -668,6 +642,8 @@ button {
 
 .add-form .cta-button {
   margin-top: 8px;
+  background: #263c2e;
+  color: white;
 }
 
 /* ================================
@@ -676,18 +652,13 @@ button {
 
 footer {
   max-width: 1200px;
-
   margin: 0 auto;
   padding: 30px 32px 40px;
-
   display: flex;
   align-items: center;
   justify-content: space-between;
-
   border-top: 1px solid #e3e2dc;
-
   color: #85857e;
-
   font-size: 12px;
 }
 
@@ -697,75 +668,58 @@ footer .logo {
 }
 
 /* ================================
-   Pet Details
+   Pet Details / Modal
    ================================ */
 
 .pet-details {
   position: fixed;
   inset: 0;
-
   z-index: 1000;
-
   display: flex;
   align-items: center;
   justify-content: center;
-
   padding: 30px;
-
   background: rgba(37, 37, 34, 0.45);
   backdrop-filter: blur(6px);
 }
 
 .pet-details-image {
   width: 430px;
-  height: 520px;
-
+  height: 600px;
   overflow: hidden;
-
   border-radius: 22px 0 0 22px;
-
   background: #e8e8e2;
 }
 
 .pet-details-image img {
   width: 100%;
   height: 100%;
-
   display: block;
-
   object-fit: cover;
 }
 
 .pet-details-content {
   width: 430px;
-  min-height: 520px;
-
+  height: 600px;
   position: relative;
-
   padding: 55px 42px;
-
   background: white;
-
   border-radius: 0 22px 22px 0;
+  overflow-y: auto;
 }
 
 .close-details {
   position: absolute;
   top: 18px;
   right: 20px;
-
   width: 36px;
   height: 36px;
-
   border: none;
   border-radius: 50%;
-
   background: #f3f2ed;
   color: #55554f;
-
   font-size: 24px;
   line-height: 1;
-
   transition:
     background 0.2s ease,
     transform 0.2s ease;
@@ -778,9 +732,7 @@ footer .logo {
 
 .pet-details-content h2 {
   margin: 0 0 10px;
-
   color: #252522;
-
   font-size: 38px;
   line-height: 1.1;
   letter-spacing: -1.5px;
@@ -788,33 +740,234 @@ footer .logo {
 
 .details-type {
   margin: 0 0 18px;
-
   color: #888880;
-
   font-size: 14px;
 }
 
 .details-status {
   display: inline-block;
-
   padding: 8px 12px;
-
   border-radius: 100px;
-
   background: #e5eee3;
   color: #38523d;
-
   font-size: 11px;
   font-weight: 700;
 }
 
 .details-description {
   margin: 28px 0 0;
-
   color: #73736c;
-
   font-size: 14px;
   line-height: 1.7;
+}
+
+/* ================================
+   Authentication
+   ================================ */
+
+.auth-section {
+  max-width: 720px;
+  margin: 0 auto 80px;
+  padding: 50px 38px;
+  text-align: center;
+  background: white;
+  border: 1px solid #e7e6df;
+  border-radius: 20px;
+  box-shadow: 0 10px 30px rgba(40, 40, 30, 0.06);
+}
+
+.auth-section h2 {
+  margin: 0 0 12px;
+  color: #252522;
+  font-size: 30px;
+  letter-spacing: -1px;
+}
+
+.auth-section > p:not(.eyebrow) {
+  margin: 0 0 28px;
+  color: #73736c;
+  font-size: 14px;
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 28px;
+  text-align: left;
+}
+
+.auth-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #55554f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.auth-form textarea {
+  font: inherit;
+  color: #252522;
+}
+
+.auth-form textarea:focus {
+  border-color: #9aaa9b !important;
+  box-shadow: 0 0 0 3px rgba(108, 128, 109, 0.1);
+}
+
+.auth-form input {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #deded7;
+  border-radius: 10px;
+  outline: none;
+  background: #fafaf7;
+  color: #252522;
+  font-size: 14px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.auth-form input:focus {
+  border-color: #9aaa9b;
+  box-shadow: 0 0 0 3px rgba(108, 128, 109, 0.1);
+}
+
+.auth-form .cta-button {
+  margin-top: 8px;
+  background: #263c2e;
+  color: white;
+}
+
+.auth-switch {
+  margin-top: 22px;
+  border: none;
+  background: transparent;
+  color: #38523d;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.auth-switch:hover {
+  text-decoration: underline;
+}
+
+/* ================================
+   Edit Pet Form
+   ================================ */
+
+.edit-form {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.edit-form h2 {
+  margin: 0 0 6px;
+  color: #252522;
+  font-size: 30px;
+  line-height: 1.1;
+  letter-spacing: -1px;
+}
+
+.edit-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #55554f;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.edit-form input,
+.edit-form select {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid #deded7;
+  border-radius: 10px;
+  outline: none;
+  background: #fafaf7;
+  color: #252522;
+  font-size: 14px;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.edit-form input:focus,
+.edit-form select:focus {
+  border-color: #9aaa9b;
+  box-shadow: 0 0 0 3px rgba(108, 128, 109, 0.1);
+}
+
+.edit-checkbox {
+  flex-direction: row !important;
+  align-items: center;
+  gap: 10px !important;
+  padding: 4px 0;
+}
+
+.edit-checkbox input {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.edit-checkbox span {
+  color: #55554f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.edit-form .cta-button {
+  width: 100%;
+  margin-top: 4px;
+  background: #263c2e;
+  color: white;
+}
+
+/* ================================
+   Error State
+   ================================ */
+
+.error-state {
+  padding: 70px 20px;
+  text-align: center;
+  background: white;
+  border: 1px solid #e7e6df;
+  border-radius: 18px;
+}
+
+.error-icon {
+  font-size: 40px;
+}
+
+.error-state h3 {
+  margin: 15px 0 8px;
+  color: #292925;
+}
+
+.error-state p {
+  margin: 0 0 20px;
+  color: #888880;
+}
+
+.retry-button {
+  border: none;
+  border-radius: 100px;
+  padding: 12px 20px;
+  background: #263c2e;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  transition: transform 0.2s ease;
+}
+
+.retry-button:hover {
+  transform: translateY(-2px);
 }
 
 /* ================================
@@ -826,7 +979,6 @@ footer .logo {
     height: auto;
     min-height: 76px;
     padding: 16px 24px;
-
     flex-wrap: wrap;
     gap: 15px;
   }
@@ -835,7 +987,6 @@ footer .logo {
     display: flex;
     flex-wrap: wrap;
     gap: 18px;
-
     order: 3;
     width: 100%;
   }
@@ -874,6 +1025,23 @@ footer .logo {
 }
 
 @media (max-width: 650px) {
+  .auth-section {
+    margin: 0 20px 60px;
+    padding: 38px 22px;
+  }
+
+  .auth-section h2 {
+    font-size: 26px;
+  }
+
+  .auth-form {
+    gap: 16px;
+  }
+
+  .edit-form {
+    gap: 14px;
+  }
+
   .pet-card-actions {
     flex-direction: column;
   }
@@ -885,11 +1053,11 @@ footer .logo {
   .details-actions button {
     width: 100%;
   }
+
   .navbar {
     height: auto;
     min-height: 70px;
     padding: 14px 20px;
-
     gap: 12px;
   }
 
@@ -904,6 +1072,11 @@ footer .logo {
 
   .nav-links a {
     font-size: 12px;
+  }
+
+  .user-menu {
+    width: 100%;
+    justify-content: space-between;
   }
 
   .nav-button {
@@ -951,7 +1124,6 @@ footer .logo {
   .cta-section {
     margin: 0 20px 50px;
     padding: 40px 28px;
-
     flex-direction: column;
     align-items: flex-start;
   }
@@ -962,7 +1134,6 @@ footer .logo {
 
   footer {
     padding: 25px 20px 35px;
-
     flex-direction: column;
     align-items: flex-start;
     gap: 15px;
@@ -973,8 +1144,8 @@ footer .logo {
     gap: 10px;
   }
 
-  .pet-info > div {
-    width: 100%;
+  .pet-main-info {
+    width: calc(100% - 55px);
   }
 
   .pet-details {
@@ -988,11 +1159,11 @@ footer .logo {
   .pet-details-content {
     width: 100%;
     max-width: 430px;
+    height: auto;
     min-height: auto;
-
     padding: 50px 28px 30px;
-
     border-radius: 22px;
+    overflow-y: visible;
   }
 
   .add-form {
@@ -1003,4 +1174,18 @@ footer .logo {
   .add-form h2 {
     font-size: 25px;
   }
+}
+
+.delete-account-button {
+  border: none;
+  background: transparent;
+  color: #b33a3a;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 600;
+  padding: 0;
+}
+
+.delete-account-button:hover {
+  text-decoration: underline;
 }
