@@ -60,7 +60,12 @@ if not SUPABASE_SECRET_KEY:
 # DATABASE
 # ============================================================
 
-engine = create_engine(DATABASE_URL)
+engine = create_engine(
+    DATABASE_URL,
+    pool_size=2,
+    max_overflow=0,
+    pool_pre_ping=True
+)
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -508,6 +513,14 @@ def root():
             "PawConnect API is running"
     }
 
+@app.get("/instance")
+def identify_instance():
+    return {
+        "instance": os.getenv(
+            "INSTANCE_ID",
+            "unknown"
+        )
+    }
 
 @app.get(
     "/me",
