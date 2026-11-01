@@ -20,6 +20,7 @@ from sqlalchemy import (
     create_engine,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.dialects.postgresql import UUID
 
 
 # ============================================================
@@ -91,11 +92,11 @@ class UserModel(Base):
 
     phone = Column(String, nullable=True)
     supabase_user_id = Column(
-        String,
-        unique=True,
-        nullable=True,
-        index=True,
-    )
+    UUID(as_uuid=False),
+    unique=True,
+    nullable=True,
+    index=True,
+)
 
     # Assigned by a trusted administrator, never public signup input.
     role = Column(String(30), nullable=False, default="adopter")
